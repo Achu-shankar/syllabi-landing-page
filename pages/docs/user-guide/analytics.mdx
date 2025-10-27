@@ -1,0 +1,482 @@
+# Analytics
+
+Monitor your chatbot's usage, performance, and user satisfaction.
+
+## Overview
+
+Analytics help you:
+- 📊 Track conversation volume
+- 👥 Understand user behavior
+- ⭐ Measure satisfaction
+- 🔍 Identify knowledge gaps
+- ⚡ Optimize performance
+
+## Dashboard Overview
+
+Access analytics: **Chatbot Dashboard → Analytics Tab**
+
+### Key Metrics
+
+**Total Conversations**: Total chat sessions started
+**Total Messages**: Sum of user + bot messages
+**Avg Messages/Session**: Average conversation length
+**Response Time**: Average time to first response
+**User Satisfaction**: Rating from feedback
+
+## Conversation Analytics
+
+### Volume Trends
+
+**Daily active users**:
+```
+Graph showing DAU over time (last 30 days)
+- Peak usage days
+- Growth trends
+- Day-of-week patterns
+```
+
+**Hourly distribution**:
+```
+Heatmap showing busiest hours
+- When users are most active
+- Optimal support staffing times
+```
+
+**Message volume**:
+```
+Total messages over time
+- User messages
+- Bot responses
+- Tool calls
+```
+
+### Session Metrics
+
+**Session duration**:
+```
+Average: 5m 30s
+Median: 3m 15s
+Distribution: [histogram]
+```
+
+**Messages per session**:
+```
+Average: 8.5 messages
+Median: 6 messages
+Range: 1-50+ messages
+```
+
+**Completion rate**:
+```
+Sessions with user feedback: 45%
+Sessions ending with "thank you": 62%
+```
+
+## User Behavior
+
+### Top Questions
+
+Most frequently asked questions:
+
+| Question | Count | Avg Satisfaction |
+|----------|-------|------------------|
+| How do I reset my password? | 245 | 4.5/5 |
+| What are your hours? | 189 | 4.8/5 |
+| How do I track my order? | 156 | 4.2/5 |
+| What is your return policy? | 98 | 3.9/5 |
+
+**Use this to**:
+- Improve documentation
+- Add to suggested prompts
+- Train staff on common issues
+- Update FAQ content
+
+### User Journey
+
+Track conversation paths:
+
+```
+Start
+├─ 40% ask about products
+│  ├─ 25% ask for pricing
+│  └─ 15% request demo
+├─ 30% need support
+│  ├─ 20% resolve issue
+│  └─ 10% escalate to human
+└─ 30% general questions
+   └─ 25% satisfied with answer
+```
+
+### Drop-off Points
+
+Where users leave conversations:
+
+```
+After bot greeting: 15%
+After 1 message: 25%
+After 3+ messages: 10%
+Natural completion: 50%
+```
+
+## Performance Metrics
+
+### Response Time
+
+**Average response time**: 2.3 seconds
+```
+< 1s: 30%
+1-2s: 45%
+2-5s: 20%
+> 5s: 5% (investigate slow queries)
+```
+
+**Factors affecting speed**:
+- Document count
+- Query complexity
+- Model selection
+- Server load
+
+### Accuracy
+
+**Answer quality** (based on user feedback):
+```
+Helpful: 78%
+Somewhat helpful: 15%
+Not helpful: 7%
+```
+
+**Citation usage**:
+```
+Answers with citations: 65%
+Answers without: 35%
+```
+
+### Tool Usage
+
+**Skills/actions called**:
+
+| Skill | Calls | Success Rate | Avg Time |
+|-------|-------|--------------|----------|
+| Document Search | 1,245 | 95% | 1.2s |
+| Web Search | 89 | 87% | 3.5s |
+| Calendar Check | 45 | 98% | 0.8s |
+| Email Send | 23 | 100% | 2.1s |
+
+## User Satisfaction
+
+### Feedback Ratings
+
+**Overall satisfaction**:
+```
+5 stars: 45% ⭐⭐⭐⭐⭐
+4 stars: 30% ⭐⭐⭐⭐
+3 stars: 15% ⭐⭐⭐
+2 stars: 5%  ⭐⭐
+1 star:  5%  ⭐
+```
+
+**Average: 4.1/5**
+
+### Net Promoter Score (NPS)
+
+```
+Promoters (9-10): 40%
+Passives (7-8):   35%
+Detractors (0-6): 25%
+
+NPS Score: +15 (Promoters - Detractors)
+```
+
+### Feedback Comments
+
+Recent feedback:
+```
+✅ "Very helpful, answered my question immediately!"
+✅ "Love how it found the exact page I needed"
+⚠️ "Took a while to load"
+❌ "Couldn't answer my question about returns"
+❌ "Gave outdated information"
+```
+
+**Action items**:
+- Investigate slow responses
+- Update return policy documentation
+- Review and refresh old documents
+
+## Document Analytics
+
+### Usage by Document
+
+| Document | Queries | Citations | Avg Rating |
+|----------|---------|-----------|------------|
+| User Guide.pdf | 456 | 789 | 4.6/5 |
+| FAQ.pdf | 234 | 445 | 4.8/5 |
+| API Docs.pdf | 123 | 267 | 4.3/5 |
+| Policy.pdf | 67 | 89 | 3.9/5 |
+
+**Insights**:
+- User Guide is most valuable
+- FAQ has highest satisfaction
+- Policy doc needs improvement
+
+### Coverage Gaps
+
+Questions without good answers:
+
+| Question | Frequency | Avg Rating |
+|----------|-----------|------------|
+| "Do you ship internationally?" | 45 | 2.1/5 |
+| "Can I bulk order?" | 23 | 2.3/5 |
+| "What about enterprise pricing?" | 18 | 2.0/5 |
+
+**Action**: Create documents covering these topics
+
+### Unused Documents
+
+Documents rarely cited:
+```
+Old Product Guide (v1.0): 2 citations
+Archived FAQ: 0 citations
+Draft Policy: 1 citation
+```
+
+**Action**: Remove or update unused documents
+
+## Cost Analytics
+
+### API Usage
+
+**OpenAI API**:
+```
+Total tokens: 5.2M
+Cost: $52.00
+Average per conversation: $0.08
+```
+
+**Breakdown by model**:
+```
+gpt-4o-mini: 4.5M tokens ($22.50)
+gpt-4o: 0.7M tokens ($29.50)
+```
+
+**Cost optimization**:
+- Switch to gpt-4o-mini for simple queries
+- Reduce context window
+- Cache frequent queries
+
+### Storage Usage
+
+```
+Documents: 2.3 GB
+Chunks: 45,000
+Embeddings: 1.1 GB
+Conversations: 0.8 GB
+
+Total: 4.2 GB
+```
+
+## Platform Analytics
+
+### Integration Usage
+
+| Platform | Sessions | Messages | Active Users |
+|----------|----------|----------|--------------|
+| Web | 890 | 7,543 | 456 |
+| Discord | 234 | 2,109 | 89 |
+| Slack | 156 | 1,345 | 67 |
+| API | 45 | 389 | 12 |
+
+### Geographic Distribution
+
+```
+United States: 45%
+United Kingdom: 20%
+Canada: 12%
+Australia: 8%
+Other: 15%
+```
+
+### Device Breakdown
+
+```
+Desktop: 60%
+Mobile: 35%
+Tablet: 5%
+```
+
+## Exporting Analytics
+
+### Export Options
+
+1. **Dashboard → Analytics → Export**
+2. Select date range
+3. Choose format:
+   - CSV (spreadsheet-friendly)
+   - JSON (programmatic access)
+   - PDF (reporting)
+4. Select metrics to include
+5. **Download**
+
+### Automated Reports
+
+Schedule weekly/monthly reports:
+
+1. **Analytics → Reports → Create Schedule**
+2. Configure:
+   - **Frequency**: Daily, Weekly, Monthly
+   - **Recipients**: email addresses
+   - **Format**: PDF, CSV
+   - **Metrics**: Select which data to include
+3. **Save**
+
+**Example report**:
+```
+Weekly Chatbot Report
+Week of Jan 15-21, 2024
+
+Summary:
+- 1,234 conversations (+15% vs last week)
+- 10,567 messages
+- 4.3/5 avg satisfaction
+- 2.1s avg response time
+
+Top issues:
+1. Password resets (145 conversations)
+2. Shipping questions (89 conversations)
+3. Product availability (67 conversations)
+
+Action items:
+- Update shipping documentation
+- Add self-service password reset flow
+```
+
+## Setting Goals
+
+### Define KPIs
+
+Track key performance indicators:
+
+**Volume goals**:
+```
+Target: 1,500 conversations/month
+Current: 1,234
+Progress: 82%
+```
+
+**Quality goals**:
+```
+Target: 4.5/5 satisfaction
+Current: 4.3/5
+Gap: -0.2
+```
+
+**Efficiency goals**:
+```
+Target: < 3s response time
+Current: 2.3s
+Status: ✅ Met
+```
+
+### Alerts
+
+Set up alerts for anomalies:
+
+**High volume**:
+```
+Alert if conversations > 200% of average
+→ May need additional resources
+```
+
+**Low satisfaction**:
+```
+Alert if satisfaction < 3.5/5
+→ Review recent conversations
+```
+
+**Errors**:
+```
+Alert if error rate > 5%
+→ Technical investigation needed
+```
+
+## Advanced Analytics
+
+### Cohort Analysis
+
+Track user retention:
+
+```
+Week 1 users: 100%
+Week 2 retention: 45%
+Week 3 retention: 32%
+Week 4 retention: 28%
+```
+
+### A/B Testing
+
+Compare different configurations:
+
+**Test**: Greeting message variations
+```
+Control: "Hi! How can I help?"
+Variant A: "Hello! I'm here to answer your questions."
+Variant B: "Welcome! Ask me anything about our products."
+
+Results:
+Control: 4.2/5 satisfaction, 8.5 msgs/session
+Variant A: 4.3/5 satisfaction, 8.7 msgs/session ✓
+Variant B: 4.1/5 satisfaction, 8.2 msgs/session
+```
+
+### Funnel Analysis
+
+Track conversion paths:
+
+```
+1. User starts chat: 1000
+2. User asks question: 850 (85%)
+3. Bot provides answer: 810 (81%)
+4. User satisfied: 650 (65%)
+5. User takes action: 320 (32%)
+```
+
+## Best Practices
+
+### Regular Reviews
+
+✅ Weekly:
+- Check volume trends
+- Review satisfaction scores
+- Address negative feedback
+
+✅ Monthly:
+- Analyze top questions
+- Identify coverage gaps
+- Update documentation
+
+✅ Quarterly:
+- Review overall performance
+- Set new goals
+- Optimize costs
+
+### Data-Driven Improvements
+
+1. **Identify issues** in analytics
+2. **Form hypothesis** (e.g., "Adding X document will improve Y")
+3. **Make changes**
+4. **Measure impact**
+5. **Iterate**
+
+### Privacy
+
+- Anonymize personal data
+- Comply with GDPR/CCPA
+- Allow users to delete their data
+- Secure analytics data
+
+## Next Steps
+
+- [Embedding Widget](/docs/user-guide/embedding-widget) - Add to website
+- [Creating Chatbot](/docs/user-guide/creating-chatbot) - Optimize based on insights
+- [Uploading Documents](/docs/user-guide/uploading-documents) - Fill knowledge gaps
+- [API Reference](/docs/api-reference/chat-api) - Programmatic analytics access

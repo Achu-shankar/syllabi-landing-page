@@ -1,0 +1,645 @@
+# Common Errors
+
+Solutions to frequently encountered issues in Syllabi.
+
+## Installation and Setup
+
+### Database Connection Errors
+
+#### Error: "Failed to connect to Supabase"
+
+**Symptoms**:
+```
+Error: Invalid Supabase URL or key
+Connection refused
+```
+
+**Causes**:
+- Incorrect `SUPABASE_URL` or `SUPABASE_ANON_KEY`
+- Network connectivity issues
+- Supabase project paused/deleted
+
+**Solutions**:
+
+1. **Verify environment variables**:
+   ```bash
+   # Check .env.local file
+   cat .env.local | grep SUPABASE
+
+   # Should show:
+   NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+   ```
+
+2. **Test connection**:
+   ```bash
+   curl https://YOUR_PROJECT.supabase.co/rest/v1/
+   ```
+
+   Should return API info, not 404.
+
+3. **Check Supabase dashboard**:
+   - Project is active (not paused)
+   - API keys match exactly
+   - No extra spaces in keys
+
+4. **Restart dev server**:
+   ```bash
+   # After changing environment variables
+   npm run dev
+   ```
+
+#### Error: "Row Level Security policy violation"
+
+**Symptoms**:
+```
+new row violates row-level security policy for table "chatbots"
+```
+
+**Cause**: RLS policies not properly configured or user not authenticated.
+
+**Solutions**:
+
+1. **Check authentication**:
+   ```javascript
+   // Verify user is logged in
+   const { data: { user } } = await supabase.auth.getUser()
+   console.log('User:', user) // Should not be null
+   ```
+
+2. **Review RLS policies**:
+   ```sql
+   -- In Supabase SQL Editor, check policies exist
+   SELECT * FROM pg_policies WHERE tablename = 'chatbots';
+   ```
+
+3. **Use service role key for admin operations**:
+   ```javascript
+   // Server-side only!
+   const supabaseAdmin = createClient(
+     process.env.SUPABASE_URL,
+     process.env.SUPABASE_SERVICE_ROLE_KEY
+   )
+   ```
+
+### Build Errors
+
+#### Error: "Module not found: Can't resolve '@supabase/supabase-js'"
+
+**Solution**:
+```bash
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### Error: "Out of memory" during build
+
+**Solutions**:
+
+1. **Increase Node memory**:
+   ```bash
+   # In package.json
+   "scripts": {
+     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build"
+   }
+   ```
+
+2. **Clear Next.js cache**:
+   ```bash
+   rm -rf .next
+   npm run build
+   ```
+
+## Chat and AI Issues
+
+### Chatbot Not Responding
+
+#### Error: Messages sent but no response
+
+**Debugging steps**:
+
+1. **Check browser console**:
+   - Open DevTools → Console
+   - Look for errors (red messages)
+   - Common: CORS, API key invalid, rate limit
+
+2. **Check network tab**:
+   - DevTools → Network
+   - Find `/api/chat` request
+   - Check status code:
+     - 200: Success
+     - 401: Authentication issue
+     - 429: Rate limit
+     - 500: Server error
+
+3. **Verify API key**:
+   ```javascript
+   // In browser console
+   console.log('OpenAI Key set:', !!process.env.OPENAI_API_KEY)
+   // Should log: true (but won't show the key)
+   ```
+
+**Common causes and fixes**:
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| 401 Unauthorized | Invalid OpenAI API key | Check `OPENAI_API_KEY` in .env |
+| 429 Rate Limit | Too many requests | Wait or upgrade OpenAI plan |
+| 500 Server Error | OpenAI API down | Check [status.openai.com](https://status.openai.com) |
+| Network error | Server not running | Restart dev server |
+
+### Streaming Not Working
+
+#### Messages appear all at once instead of token-by-token
+
+**Causes**:
+- Incorrect AI SDK configuration
+- React component memoization blocking updates
+- Network buffering
+
+**Solutions**:
+
+1. **Check streaming configuration** (server):
+   ```typescript
+   // src/app/api/chat/route.ts
+   return streamText({
+     model: openai('gpt-4o-mini'),
+     messages,
+     experimental_transform: smoothStream({ chunking: 'line' }), // Must use experimental_transform
+   }).toDataStreamResponse()
+   ```
+
+2. **Check component memoization** (client):
+   ```typescript
+   // Disable memo during streaming
+   export const Message = memo(
+     PureMessage,
+     (prevProps, nextProps) => {
+       if (prevProps.isLoading || nextProps.isLoading) return false // Don't memoize when streaming
+       return prevProps.message.id === nextProps.message.id
+     }
+   )
+   ```
+
+3. **Clear browser cache**:
+   - Hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+
+### Tool Calls Not Displaying
+
+#### Tool execution works but UI doesn't show it
+
+**Cause**: AI SDK v5 uses dynamic `type: 'tool-{toolName}'` format.
+
+**Solution**:
+
+Check message parsing handles dynamic types:
+
+```typescript
+// src/components/message.tsx
+message.parts?.forEach((part: any) => {
+  const { type } = part
+
+  // Handle AI SDK v5 format: tool-{toolName}
+  if (type.startsWith('tool-')) {
+    const toolName = type.replace('tool-', '')
+    // Process tool call
+  }
+})
+```
+
+### Hallucinations / Wrong Answers
+
+#### Chatbot makes up information not in documents
+
+**Causes**:
+- Temperature too high
+- System prompt doesn't emphasize using documents
+- Retrieval not working properly
+
+**Solutions**:
+
+1. **Lower temperature**:
+   ```
+   Settings → Temperature: 0.2-0.4
+   ```
+
+2. **Update system prompt**:
+   ```
+   You are a helpful assistant that ONLY answers questions based on the provided documents.
+
+   IMPORTANT RULES:
+   - Always search uploaded documents before answering
+   - Only provide information found in the documents
+   - If the answer is not in the documents, say "I don't have that information"
+   - Never make up information
+   - Always cite your sources
+   ```
+
+3. **Check retrieval**:
+   ```javascript
+   // In chat API, log retrieved chunks
+   console.log('Retrieved chunks:', relevantChunks)
+   ```
+
+4. **Improve document quality**:
+   - Remove contradictory information
+   - Ensure documents are up-to-date
+   - Add more relevant documents
+
+## Document Processing Issues
+
+### Upload Fails
+
+#### Error: "File too large"
+
+**Solution**:
+```
+Maximum file size: 50MB
+
+Options:
+1. Compress PDF (Adobe Acrobat, online tools)
+2. Split into smaller files
+3. Contact support for enterprise limits
+```
+
+#### Error: "Invalid file format"
+
+**Causes**:
+- File extension doesn't match content
+- Corrupted file
+- Unsupported format
+
+**Solutions**:
+
+1. **Verify file type**:
+   ```bash
+   # Check actual file type (Linux/Mac)
+   file document.pdf
+   # Should show: PDF document, version X.X
+   ```
+
+2. **Supported formats**:
+   - ✅ PDF (.pdf)
+   - ✅ Word (.docx)
+   - ✅ Text (.txt, .md)
+   - ✅ CSV (.csv)
+   - ❌ Images without text (.jpg, .png without OCR)
+   - ❌ Scanned PDFs without text layer
+
+3. **Fix corrupted PDF**:
+   - Open in Adobe Acrobat
+   - File → Save As → Optimized PDF
+   - Try uploading again
+
+### Document Processing Stuck
+
+#### Status shows "Processing" for too long
+
+**Expected times**:
+- Small PDF (< 5MB): 30-60 seconds
+- Medium PDF (5-20MB): 1-3 minutes
+- Large PDF (20-50MB): 3-10 minutes
+
+**If stuck longer**:
+
+1. **Check backend logs** (if using Python backend):
+   ```bash
+   # Railway
+   Railway dashboard → Worker service → Logs
+
+   # Docker
+   docker logs syllabi-worker-1
+
+   # Look for errors
+   ```
+
+2. **Refresh status**:
+   ```javascript
+   // Manually check status
+   const response = await fetch(`/api/documents/${documentId}`)
+   const doc = await response.json()
+   console.log(doc.indexing_status, doc.indexing_error)
+   ```
+
+3. **Retry processing**:
+   - Delete document
+   - Re-upload
+   - If fails again, contact support
+
+### No Text Extracted from PDF
+
+#### Chunks empty or very few chunks created
+
+**Cause**: Image-based PDF without text layer.
+
+**Test**:
+```
+Open PDF → Try to select text with mouse
+
+If you CAN'T select text → Image-based PDF
+If you CAN select text → Text-based PDF (should work)
+```
+
+**Solutions**:
+
+1. **Add OCR text layer**:
+   - Adobe Acrobat: Tools → Recognize Text → In This File
+   - Online: [ocr.space](https://ocr.space), [ilovepdf.com/ocr_pdf](https://www.ilovepdf.com/ocr_pdf)
+
+2. **Convert to Word first**:
+   - Word often does better OCR
+   - File → Open → Select PDF
+   - Word converts → Save as .docx
+   - Upload .docx to Syllabi
+
+3. **Re-create from source**:
+   - If you have original document
+   - Export as PDF with text support
+
+## Deployment Issues
+
+### Vercel Build Fails
+
+#### Error: "Module not found" in production
+
+**Cause**: Dependency issue or incorrect import path.
+
+**Solutions**:
+
+1. **Check dependencies**:
+   ```bash
+   # Ensure all dependencies are in package.json
+   npm install --save missing-package
+   ```
+
+2. **Check import paths**:
+   ```typescript
+   // ❌ Wrong
+   import { foo } from '../../../components/foo'
+
+   // ✅ Better
+   import { foo } from '@/components/foo'
+   ```
+
+3. **Clear Vercel cache**:
+   - Vercel Dashboard → Settings → General
+   - Clear Build Cache
+   - Redeploy
+
+#### Error: "Environment variable not defined"
+
+**Solution**:
+
+1. Add all required variables in Vercel:
+   - Project Settings → Environment Variables
+   - Add:
+     - `NEXT_PUBLIC_SUPABASE_URL`
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+     - `SUPABASE_SERVICE_ROLE_KEY`
+     - `OPENAI_API_KEY`
+     - etc.
+
+2. **Redeploy** after adding variables:
+   - Deployments → Click on deployment → Redeploy
+
+### Railway Backend Issues
+
+#### Worker not processing tasks
+
+**Debug steps**:
+
+1. **Check worker logs**:
+   ```bash
+   # Should see:
+   [INFO] celery@worker ready.
+   [INFO] Connected to redis://...
+   ```
+
+2. **Check Redis connection**:
+   ```bash
+   # In Railway Redis service
+   redis-cli
+   > PING
+   PONG  # Should respond
+
+   > LLEN celery
+   (integer) 0  # Number of pending tasks
+   ```
+
+3. **Restart worker**:
+   - Railway Dashboard → Worker service → Restart
+
+4. **Check environment variables match**:
+   - Backend and Worker must have same `REDIS_URL`
+
+## Performance Issues
+
+### Slow Response Times
+
+#### Chatbot takes > 5 seconds to respond
+
+**Causes and solutions**:
+
+1. **Too many documents**:
+   ```
+   Problem: Searching 1000+ chunks is slow
+   Solution: Organize into folders, enable/disable as needed
+   ```
+
+2. **Large context window**:
+   ```
+   Problem: Sending entire conversation every time
+   Solution: Reduce context window in settings (4096 → 2048)
+   ```
+
+3. **Slow model**:
+   ```
+   Problem: Using gpt-4o (slower but better quality)
+   Solution: Switch to gpt-4o-mini for speed
+   ```
+
+4. **Cold start** (serverless):
+   ```
+   Problem: First request after idle takes longer
+   Solution: Keep-alive pings, or upgrade to dedicated server
+   ```
+
+**Optimize**:
+```javascript
+// Cache embeddings
+// Reduce chunk overlap
+// Use smaller embedding model
+// Enable pagination for large result sets
+```
+
+### High API Costs
+
+#### OpenAI bills are unexpectedly high
+
+**Debug**:
+
+1. **Check usage analytics**:
+   - Syllabi Dashboard → Analytics → Costs
+   - OpenAI Dashboard → Usage
+
+2. **Identify causes**:
+   - Using expensive model (gpt-4o vs gpt-4o-mini)
+   - Large context windows
+   - Repeated embeddings
+   - Many tool calls
+
+**Solutions**:
+
+1. **Switch to cheaper model**:
+   ```
+   gpt-4o: $15/1M tokens
+   gpt-4o-mini: $0.15/1M tokens (100x cheaper!)
+   ```
+
+2. **Reduce context**:
+   ```
+   Settings → Max Context: 4096 instead of 16384
+   ```
+
+3. **Cache responses**:
+   ```javascript
+   // Cache common questions
+   const cache = new Map()
+
+   if (cache.has(question)) {
+     return cache.get(question)
+   }
+   ```
+
+4. **Limit retrieval chunks**:
+   ```
+   Settings → Max Chunks: 3-5 instead of 10
+   ```
+
+## Authentication Issues
+
+### Can't Log In
+
+#### Error: "Invalid login credentials"
+
+**Solutions**:
+
+1. **Reset password**:
+   - Click "Forgot Password"
+   - Check email (including spam)
+   - Follow reset link
+
+2. **Check email verified**:
+   - Check inbox for verification email
+   - Click verification link
+   - Try logging in again
+
+3. **Clear browser data**:
+   - Clear cookies and cache
+   - Try incognito mode
+   - Try different browser
+
+### Session Expired
+
+#### Keeps logging out automatically
+
+**Cause**: Session token expired (default: 1 hour).
+
+**Solutions**:
+
+1. **Extend session duration**:
+   ```javascript
+   // In Supabase dashboard
+   Auth → Settings → Session Duration: 7 days
+   ```
+
+2. **Implement refresh**:
+   ```javascript
+   // Auto-refresh token
+   supabase.auth.onAuthStateChange((event, session) => {
+     if (event === 'TOKEN_REFRESHED') {
+       console.log('Token refreshed')
+     }
+   })
+   ```
+
+## Widget / Embed Issues
+
+### Widget Not Appearing
+
+**Debugging**:
+
+1. **Check browser console**:
+   ```
+   F12 → Console → Look for errors
+   ```
+
+2. **Verify script loaded**:
+   ```javascript
+   // In console
+   console.log(window.SyllabiChat)
+   // Should not be undefined
+   ```
+
+3. **Check domain whitelist**:
+   - Dashboard → Settings → Allowed Domains
+   - Add your domain
+
+4. **Check z-index**:
+   ```css
+   #syllabi-chat-widget {
+     z-index: 999999 !important;
+   }
+   ```
+
+### CORS Errors in Widget
+
+#### Error: "blocked by CORS policy"
+
+**Solution**:
+
+Update `next.config.mjs`:
+
+```javascript
+async headers() {
+  return [
+    {
+      source: '/api/:path*',
+      headers: [
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+        { key: 'Access-Control-Allow-Methods', value: 'GET,POST,OPTIONS' },
+        { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+      ],
+    },
+  ]
+}
+```
+
+## Getting More Help
+
+### Check Status Page
+
+[status.syllabi.io](https://status.syllabi.io) (example) - Check for outages
+
+### Support Channels
+
+- 📚 [Documentation](/docs)
+- 💬 [Discord Community](https://discord.gg/syllabi)
+- 📧 Email: support@syllabi.io
+- 🐛 [GitHub Issues](https://github.com/yourorg/syllabi/issues)
+
+### Reporting Bugs
+
+Include:
+1. **Steps to reproduce**
+2. **Expected vs actual behavior**
+3. **Error messages** (console, network tab)
+4. **Environment** (browser, OS, deployment platform)
+5. **Screenshots** (if UI issue)
+
+## Next Steps
+
+- [FAQ](/docs/troubleshooting/faq) - Frequently asked questions
+- [Chat API](/docs/api-reference/chat-api) - API errors
+- [Deployment Guides](/docs/deployment) - Platform-specific issues

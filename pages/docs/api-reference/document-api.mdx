@@ -1,0 +1,598 @@
+# Document API
+
+Programmatically manage documents and content sources for your chatbot.
+
+## Authentication
+
+Include API key in all requests:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+## Document Endpoints
+
+### Upload Document
+
+Upload a file for processing.
+
+#### Endpoint
+
+```
+POST /api/documents/upload
+```
+
+#### Request (multipart/form-data)
+
+```bash
+curl -X POST https://your-app.com/api/documents/upload \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "chatbot_id=your-chatbot-id" \
+  -F "file=@/path/to/document.pdf" \
+  -F "folder_id=optional-folder-id" \
+  -F "metadata={\"type\":\"manual\",\"version\":\"2.0\"}"
+```
+
+#### Form Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `chatbot_id` | string (UUID) | Yes | Chatbot ID |
+| `file` | file | Yes | Document file (max 50MB) |
+| `folder_id` | string (UUID) | No | Organization folder |
+| `metadata` | JSON string | No | Custom metadata |
+
+#### Response
+
+```json
+{
+  "document_id": "770e8400-e29b-41d4-a716-446655440000",
+  "file_name": "product-manual.pdf",
+  "file_type": "document",
+  "file_size": 2457600,
+  "indexing_status": "pending",
+  "uploaded_at": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "type": "manual",
+    "version": "2.0"
+  }
+}
+```
+
+### Import URL
+
+Import content from a URL.
+
+#### Endpoint
+
+```
+POST /api/documents/import-url
+```
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/documents/import-url \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "your-chatbot-id",
+    "url": "https://example.com/docs/guide",
+    "file_type": "url",
+    "folder_id": "optional-folder-id"
+  }'
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `chatbot_id` | string | Yes | Chatbot ID |
+| `url` | string (URL) | Yes | URL to import |
+| `file_type` | string | Yes | `url`, `youtube`, `video` |
+| `folder_id` | string | No | Organization folder |
+
+#### Response
+
+```json
+{
+  "document_id": "880e8400-e29b-41d4-a716-446655440000",
+  "file_name": "Getting Started Guide",
+  "file_type": "url",
+  "file_url": "https://example.com/docs/guide",
+  "indexing_status": "processing",
+  "uploaded_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### Get Document Status
+
+Check processing status of a document.
+
+#### Endpoint
+
+```
+GET /api/documents/{document_id}
+```
+
+#### Request
+
+```bash
+curl -X GET https://your-app.com/api/documents/DOCUMENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "document_id": "770e8400-e29b-41d4-a716-446655440000",
+  "chatbot_id": "660e8400-e29b-41d4-a716-446655440000",
+  "file_name": "product-manual.pdf",
+  "file_type": "document",
+  "file_size": 2457600,
+  "file_url": "https://storage.url/files/...",
+  "indexing_status": "completed",
+  "indexing_error": null,
+  "chunk_count": 387,
+  "uploaded_at": "2024-01-15T10:30:00Z",
+  "indexed_at": "2024-01-15T10:32:00Z",
+  "metadata": {}
+}
+```
+
+#### Status Values
+
+- `pending`: In upload queue
+- `processing`: Currently being processed
+- `completed`: Ready to use
+- `failed`: Processing error
+
+### List Documents
+
+Get all documents for a chatbot.
+
+#### Endpoint
+
+```
+GET /api/chatbots/{chatbot_id}/documents
+```
+
+#### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Results per page (default: 50, max: 100) |
+| `offset` | integer | Pagination offset |
+| `status` | string | Filter by status (`pending`, `completed`, etc.) |
+| `folder_id` | string | Filter by folder |
+| `file_type` | string | Filter by type (`document`, `url`, etc.) |
+
+#### Request
+
+```bash
+curl -X GET "https://your-app.com/api/chatbots/CHATBOT_ID/documents?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "documents": [
+    {
+      "document_id": "uuid",
+      "file_name": "product-manual.pdf",
+      "file_type": "document",
+      "file_size": 2457600,
+      "indexing_status": "completed",
+      "chunk_count": 387,
+      "uploaded_at": "2024-01-15T10:30:00Z",
+      "indexed_at": "2024-01-15T10:32:00Z"
+    },
+    // ... more documents
+  ],
+  "pagination": {
+    "total": 45,
+    "limit": 10,
+    "offset": 0,
+    "has_more": true
+  }
+}
+```
+
+### Delete Document
+
+Remove a document and its chunks.
+
+#### Endpoint
+
+```
+DELETE /api/documents/{document_id}
+```
+
+#### Request
+
+```bash
+curl -X DELETE https://your-app.com/api/documents/DOCUMENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Document and 387 chunks deleted successfully"
+}
+```
+
+## Chunk Endpoints
+
+### Get Document Chunks
+
+Retrieve chunks for a document.
+
+#### Endpoint
+
+```
+GET /api/documents/{document_id}/chunks
+```
+
+#### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Results per page |
+| `offset` | integer | Pagination offset |
+| `page_number` | integer | Filter by PDF page |
+
+#### Request
+
+```bash
+curl -X GET "https://your-app.com/api/documents/DOCUMENT_ID/chunks?limit=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "chunks": [
+    {
+      "chunk_id": "990e8400-e29b-41d4-a716-446655440000",
+      "chunk_text": "Product X installation requires...",
+      "chunk_type": "text",
+      "page_number": 5,
+      "token_count": 128,
+      "created_at": "2024-01-15T10:32:00Z"
+    },
+    // ... more chunks
+  ],
+  "pagination": {
+    "total": 387,
+    "limit": 10,
+    "offset": 0,
+    "has_more": true
+  }
+}
+```
+
+### Search Chunks
+
+Semantic search across chunks.
+
+#### Endpoint
+
+```
+POST /api/documents/search
+```
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/documents/search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "your-chatbot-id",
+    "query": "how to install",
+    "limit": 5,
+    "threshold": 0.7
+  }'
+```
+
+#### Request Body
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `chatbot_id` | string | Chatbot ID |
+| `query` | string | Search query |
+| `limit` | integer | Max results (default: 10) |
+| `threshold` | float | Similarity threshold 0-1 (default: 0.7) |
+| `document_ids` | array | Filter by specific documents |
+
+#### Response
+
+```json
+{
+  "results": [
+    {
+      "chunk_id": "uuid",
+      "chunk_text": "To install Product X, first ensure...",
+      "similarity": 0.89,
+      "document_id": "uuid",
+      "file_name": "installation-guide.pdf",
+      "page_number": 3
+    },
+    // ... more results
+  ],
+  "query_time_ms": 45
+}
+```
+
+## Folder Endpoints
+
+### Create Folder
+
+Organize documents into folders.
+
+#### Endpoint
+
+```
+POST /api/folders
+```
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/folders \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "your-chatbot-id",
+    "name": "Product Manuals",
+    "parent_folder_id": null
+  }'
+```
+
+#### Response
+
+```json
+{
+  "folder_id": "aa0e8400-e29b-41d4-a716-446655440000",
+  "chatbot_id": "your-chatbot-id",
+  "name": "Product Manuals",
+  "parent_folder_id": null,
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### List Folders
+
+#### Endpoint
+
+```
+GET /api/chatbots/{chatbot_id}/folders
+```
+
+#### Response
+
+```json
+{
+  "folders": [
+    {
+      "folder_id": "uuid",
+      "name": "Product Manuals",
+      "document_count": 12,
+      "created_at": "2024-01-15T10:30:00Z"
+    },
+    // ... more folders
+  ]
+}
+```
+
+## Batch Operations
+
+### Bulk Upload
+
+Upload multiple documents at once.
+
+#### Endpoint
+
+```
+POST /api/documents/bulk-upload
+```
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/documents/bulk-upload \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "chatbot_id=your-chatbot-id" \
+  -F "files[]=@/path/to/doc1.pdf" \
+  -F "files[]=@/path/to/doc2.pdf" \
+  -F "files[]=@/path/to/doc3.pdf" \
+  -F "folder_id=optional-folder-id"
+```
+
+#### Response
+
+```json
+{
+  "documents": [
+    {
+      "document_id": "uuid-1",
+      "file_name": "doc1.pdf",
+      "status": "pending"
+    },
+    {
+      "document_id": "uuid-2",
+      "file_name": "doc2.pdf",
+      "status": "pending"
+    },
+    {
+      "document_id": "uuid-3",
+      "file_name": "doc3.pdf",
+      "status": "pending"
+    }
+  ],
+  "total": 3,
+  "success": 3,
+  "failed": 0
+}
+```
+
+### Bulk Import URLs
+
+Import multiple URLs.
+
+#### Endpoint
+
+```
+POST /api/documents/bulk-import-urls
+```
+
+#### Request
+
+```json
+{
+  "chatbot_id": "your-chatbot-id",
+  "urls": [
+    "https://example.com/docs/page1",
+    "https://example.com/docs/page2",
+    "https://example.com/docs/page3"
+  ],
+  "file_type": "url"
+}
+```
+
+## Webhooks
+
+Get notified when documents finish processing. See [Webhooks](/docs/api-reference/webhooks).
+
+## Examples
+
+### Complete Upload Flow
+
+```javascript
+async function uploadAndWaitForProcessing(chatbotId, filePath) {
+  // 1. Upload document
+  const formData = new FormData();
+  formData.append('chatbot_id', chatbotId);
+  formData.append('file', fs.createReadStream(filePath));
+
+  const uploadResponse = await fetch('https://your-app.com/api/documents/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+    },
+    body: formData,
+  });
+
+  const { document_id } = await uploadResponse.json();
+  console.log(`Uploaded: ${document_id}`);
+
+  // 2. Poll for completion
+  while (true) {
+    const statusResponse = await fetch(
+      `https://your-app.com/api/documents/${document_id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+        },
+      }
+    );
+
+    const document = await statusResponse.json();
+
+    if (document.indexing_status === 'completed') {
+      console.log(`Processing complete! ${document.chunk_count} chunks created.`);
+      return document;
+    } else if (document.indexing_status === 'failed') {
+      throw new Error(`Processing failed: ${document.indexing_error}`);
+    }
+
+    // Wait 5 seconds before checking again
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+}
+```
+
+### Bulk Document Management
+
+```python
+import requests
+import time
+
+class DocumentManager:
+    def __init__(self, api_key, base_url):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.headers = {
+            'Authorization': f'Bearer {api_key}'
+        }
+
+    def upload_directory(self, chatbot_id, directory_path):
+        """Upload all PDFs from a directory"""
+        files = []
+        for file_path in Path(directory_path).glob('*.pdf'):
+            with open(file_path, 'rb') as f:
+                files.append(('files[]', f))
+
+        data = {'chatbot_id': chatbot_id}
+
+        response = requests.post(
+            f'{self.base_url}/api/documents/bulk-upload',
+            headers=self.headers,
+            data=data,
+            files=files
+        )
+
+        return response.json()
+
+    def wait_for_all_processing(self, document_ids):
+        """Wait for all documents to finish processing"""
+        while document_ids:
+            for doc_id in list(document_ids):
+                response = requests.get(
+                    f'{self.base_url}/api/documents/{doc_id}',
+                    headers=self.headers
+                )
+
+                document = response.json()
+
+                if document['indexing_status'] == 'completed':
+                    print(f"✓ {document['file_name']} complete")
+                    document_ids.remove(doc_id)
+                elif document['indexing_status'] == 'failed':
+                    print(f"✗ {document['file_name']} failed")
+                    document_ids.remove(doc_id)
+
+            if document_ids:
+                time.sleep(5)
+
+# Usage
+manager = DocumentManager('YOUR_API_KEY', 'https://your-app.com')
+
+# Upload all PDFs from directory
+result = manager.upload_directory('chatbot-id', './documents')
+document_ids = [d['document_id'] for d in result['documents']]
+
+# Wait for processing
+manager.wait_for_all_processing(document_ids)
+```
+
+## Rate Limits
+
+Same as [Chat API rate limits](/docs/api-reference/chat-api#rate-limiting):
+
+- **File uploads**: 20/minute (max 50MB per file)
+- **URL imports**: 50/minute
+- **Status checks**: 100/minute
+
+## Next Steps
+
+- [Chat API](/docs/api-reference/chat-api) - Query processed documents
+- [Webhooks](/docs/api-reference/webhooks) - Process completion notifications
+- [Troubleshooting](/docs/troubleshooting/common-errors) - Common issues

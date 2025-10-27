@@ -1,0 +1,333 @@
+# Repository Structure
+
+Understanding the Syllabi codebase structure and organization.
+
+## Overview
+
+```
+syllabi/
+├── frontend/           # Next.js application (main app)
+├── backend/            # Python FastAPI service (optional)
+├── README.md           # Project documentation
+├── LICENSE             # MIT License
+├── CONTRIBUTING.md     # Contribution guidelines
+└── .env.example        # Environment variables template
+```
+
+## Frontend Structure
+
+The frontend is a Next.js 15 application using the App Router.
+
+```
+frontend/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── (auth-pages)/      # Authentication routes
+│   │   │   ├── sign-in/
+│   │   │   ├── sign-up/
+│   │   │   └── forgot-password/
+│   │   │
+│   │   ├── api/               # API Routes
+│   │   │   ├── chat/          # Chat endpoints
+│   │   │   ├── chatbots/      # Chatbot management
+│   │   │   ├── dashboard/     # Dashboard APIs
+│   │   │   ├── files/         # File upload
+│   │   │   └── integrations/  # External integrations
+│   │   │
+│   │   ├── chat/              # Chat interface
+│   │   │   └── [chatbotId]/  # Dynamic chatbot route
+│   │   │       ├── components/
+│   │   │       ├── lib/
+│   │   │       └── page.tsx
+│   │   │
+│   │   └── dashboard/         # Admin dashboard
+│   │       └── [chatbotId]/
+│   │           ├── analytics/
+│   │           ├── appearance/
+│   │           ├── integrations/
+│   │           ├── knowledge-base/
+│   │           └── settings/
+│   │
+│   ├── components/            # Shared components
+│   │   └── ui/               # shadcn/ui components
+│   │
+│   ├── lib/                  # Utility functions
+│   │   ├── hooks/           # Custom React hooks
+│   │   └── utils.ts         # Helper functions
+│   │
+│   └── services/            # Business logic
+│       ├── chat/            # Chat services
+│       └── supabase/        # Database services
+│
+├── public/                  # Static assets
+│   ├── icons/
+│   └── images/
+│
+├── supabase/               # Database configuration
+│   └── migrations/         # SQL migration files
+│
+├── .env.local             # Local environment (gitignored)
+├── .env.example           # Environment template
+├── next.config.js         # Next.js configuration
+├── tailwind.config.js     # Tailwind CSS config
+├── tsconfig.json          # TypeScript config
+└── package.json           # Dependencies
+```
+
+### Key Directories Explained
+
+#### `src/app/(auth-pages)/`
+Route group for authentication pages. The parentheses exclude it from the URL path.
+
+**Files:**
+- `sign-in/page.tsx` - Login page
+- `sign-up/page.tsx` - Registration page
+- `forgot-password/page.tsx` - Password reset
+- `layout.tsx` - Auth layout (centered, no nav)
+
+#### `src/app/api/`
+API routes using Next.js Route Handlers.
+
+**Key routes:**
+- `chat/route.ts` - Main chat streaming endpoint
+- `chat/embed/route.ts` - Embedded widget chat
+- `chat/external/route.ts` - External integrations (Discord, Slack)
+- `files/upload/route.ts` - File upload handler
+- `dashboard/chatbots/[id]/route.ts` - Chatbot CRUD
+
+#### `src/app/chat/[chatbotId]/`
+Chat interface for end users.
+
+**Structure:**
+```
+chat/[chatbotId]/
+├── components/
+│   ├── ChatArea.tsx          # Main chat component
+│   ├── messages/
+│   │   ├── message.tsx       # Individual message
+│   │   ├── messages.tsx      # Message list
+│   │   └── markdown.tsx      # Message formatting
+│   ├── multimodal-input.tsx  # Text input + attachments
+│   └── sidebar/              # Chat history sidebar
+├── lib/
+│   ├── hooks.ts             # useChat, etc.
+│   ├── prompt.ts            # System prompt builder
+│   └── utils.ts             # Helper functions
+├── layout.tsx               # Chat layout
+└── page.tsx                 # Chat page
+```
+
+#### `src/app/dashboard/[chatbotId]/`
+Admin dashboard for managing chatbots.
+
+**Pages:**
+- `analytics/` - Usage metrics
+- `appearance/` - Theme customization
+- `integrations/` - Discord, Slack, etc.
+- `knowledge-base/` - Document management
+- `settings/` - Chatbot configuration
+- `skills/` - Custom actions/skills
+
+#### `src/components/ui/`
+Reusable UI components using [shadcn/ui](https://ui.shadcn.com/):
+- `button.tsx`
+- `dialog.tsx`
+- `dropdown-menu.tsx`
+- `input.tsx`
+- `toast.tsx`
+- And more...
+
+#### `src/services/`
+Business logic and external services.
+
+**Examples:**
+- `chat/tools-builder.ts` - AI tools/skills system
+- `chat/rate-limiter.ts` - Rate limiting logic
+- `supabase/server.ts` - Supabase server client
+
+## Backend Structure
+
+The backend is a Python FastAPI application for advanced document processing.
+
+```
+backend/
+├── app/
+│   ├── api/                    # API endpoints
+│   │   └── api_v1/
+│   │       ├── api.py         # Router aggregator
+│   │       └── endpoints/     # Route handlers
+│   │           ├── documents.py
+│   │           ├── multimedia.py
+│   │           ├── urls.py
+│   │           └── indexing.py
+│   │
+│   ├── core/                   # Core configuration
+│   │   ├── config.py          # Settings
+│   │   └── supabase_client.py # DB client
+│   │
+│   ├── crud/                   # Database operations
+│   │   ├── crud_chunk.py      # Document chunks
+│   │   ├── crud_reference.py  # Content sources
+│   │   └── crud_task.py       # Background tasks
+│   │
+│   ├── schemas/                # Pydantic models
+│   │   ├── chunk.py
+│   │   ├── indexing.py
+│   │   └── multimedia.py
+│   │
+│   ├── services/               # Business logic
+│   │   ├── chunking_service.py        # Text splitting
+│   │   ├── embedding_service.py       # Vector generation
+│   │   ├── pdf_parsing_service.py     # PDF processing
+│   │   ├── transcription_service.py   # Audio/video
+│   │   └── notion_service.py          # Notion integration
+│   │
+│   ├── worker/                 # Celery background tasks
+│   │   ├── celery_app.py      # Celery config
+│   │   ├── tasks_document.py  # Document processing
+│   │   ├── tasks_multimedia.py # Video/audio
+│   │   └── tasks_url.py       # URL crawling
+│   │
+│   └── main.py                # FastAPI app entry point
+│
+├── tests/                     # Test files
+│   ├── test_client.py
+│   └── test_full_pipeline.py
+│
+├── Dockerfile                 # Docker configuration
+├── docker-compose.yml         # Multi-container setup
+├── requirements.txt           # Python dependencies
+└── .env.example              # Environment template
+```
+
+### Key Backend Components
+
+#### Document Processing Pipeline
+1. **Upload** → `endpoints/documents.py`
+2. **Parse** → `services/pdf_parsing_service.py`
+3. **Chunk** → `services/chunking_service.py`
+4. **Embed** → `services/embedding_service.py`
+5. **Store** → `crud/crud_chunk.py`
+
+#### Celery Workers
+Background tasks for long-running operations:
+- PDF processing
+- Video transcription
+- Audio transcription
+- URL crawling and indexing
+- Notion page syncing
+
+## Configuration Files
+
+### `next.config.js`
+Next.js configuration:
+```javascript
+{
+  reactStrictMode: true,
+  experimental: {
+    serverActions: true
+  }
+}
+```
+
+### `tailwind.config.js`
+Tailwind CSS customization:
+- Custom colors
+- Custom fonts
+- Custom animations
+- CSS variables for theming
+
+### `tsconfig.json`
+TypeScript configuration:
+- Path aliases (`@/...`)
+- Strict mode enabled
+- Next.js types included
+
+## Important Files
+
+### Root Configuration
+- `README.md` - Project overview
+- `LICENSE` - MIT License
+- `CONTRIBUTING.md` - Contribution guidelines
+- `.gitignore` - Files to ignore in git
+
+### Frontend
+- `.env.local` - Local environment variables (gitignored)
+- `.env.example` - Environment template
+- `package.json` - Dependencies and scripts
+- `middleware.ts` - Next.js middleware (auth)
+
+### Backend
+- `.env` - Backend environment (gitignored)
+- `requirements.txt` - Python dependencies
+- `Dockerfile` - Container configuration
+- `docker-compose.yml` - Multi-service setup
+
+## Database Files
+
+Located in `frontend/supabase/migrations/`:
+
+```
+migrations/
+├── 20240101_create_chatbots.sql
+├── 20240102_create_messages.sql
+├── 20240103_create_content_sources.sql
+├── 20240104_create_document_chunks.sql
+├── 20240105_create_skills.sql
+└── 20240106_enable_rls.sql
+```
+
+Each migration:
+- Creates necessary tables
+- Sets up indexes
+- Enables Row Level Security (RLS)
+- Creates helper functions
+
+## File Naming Conventions
+
+### Frontend
+- **Pages**: `page.tsx` (App Router convention)
+- **Layouts**: `layout.tsx`
+- **Components**: PascalCase (e.g., `ChatArea.tsx`)
+- **Utilities**: kebab-case (e.g., `token-utils.ts`)
+- **Hooks**: camelCase with 'use' prefix (e.g., `useChat.ts`)
+
+### Backend
+- **Files**: snake_case (Python convention)
+- **Classes**: PascalCase
+- **Functions**: snake_case
+- **Constants**: UPPER_SNAKE_CASE
+
+## Code Organization Principles
+
+### 1. Separation of Concerns
+- **UI Components** → `components/`
+- **Business Logic** → `services/`
+- **Data Access** → `lib/db/`
+- **API Routes** → `app/api/`
+
+### 2. Feature-Based Structure
+Each feature is self-contained:
+```
+chat/[chatbotId]/
+├── components/  # Feature-specific components
+├── lib/         # Feature utilities
+└── page.tsx     # Feature entry point
+```
+
+### 3. Reusability
+- Shared components in `src/components/`
+- Shared utilities in `src/lib/`
+- Shared types in `src/types/`
+
+### 4. Type Safety
+- All files use TypeScript
+- Strict mode enabled
+- Type definitions co-located with code
+
+## Next Steps
+
+- **Understand Frontend**: [Frontend Architecture](/docs/development/frontend-architecture)
+- **Understand Backend**: [Backend Architecture](/docs/development/backend-architecture)
+- **Database Schema**: [Database Schema](/docs/development/database-schema)
+- **Start Contributing**: [Contributing Guide](/docs/development/contributing)

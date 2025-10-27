@@ -1,0 +1,144 @@
+# Prerequisites
+
+Before you start setting up Syllabi, make sure you have the following requirements met.
+
+## Required
+
+### 1. Node.js 20+
+Syllabi uses Next.js 15 which requires Node.js 20 or higher.
+
+**Check your version:**
+```bash
+node --version
+# Should show v20.0.0 or higher
+```
+
+**Install Node.js:**
+- Download from [nodejs.org](https://nodejs.org/)
+- Or use [nvm](https://github.com/nvm-sh/nvm): `nvm install 20`
+
+### 2. npm or pnpm
+Package manager for installing dependencies.
+
+```bash
+npm --version
+# Should show 9.0.0 or higher
+```
+
+### 3. Git
+For cloning the repository.
+
+```bash
+git --version
+```
+
+**Install Git:**
+- [git-scm.com](https://git-scm.com/)
+
+### 4. Supabase Account
+Syllabi uses Supabase for:
+- PostgreSQL database
+- Authentication
+- File storage
+- Real-time subscriptions
+
+**Sign up:**
+1. Go to [supabase.com](https://supabase.com)
+2. Create a free account
+3. Create a new project
+4. Note your project URL and API keys
+
+### 5. OpenAI API Key
+Required for AI chat functionality and embeddings.
+
+**Get your API key:**
+1. Sign up at [platform.openai.com](https://platform.openai.com)
+2. Go to API Keys section
+3. Create a new API key
+4. Save it securely (you won't see it again!)
+
+**Pricing:**
+- GPT-4o-mini: ~$0.15 per 1M input tokens
+- text-embedding-3-small: ~$0.02 per 1M tokens
+
+## Optional (For Backend)
+
+### 6. Python 3.10+
+Only needed if you want to run the backend for advanced document processing.
+
+```bash
+python --version
+# Should show 3.10.0 or higher
+```
+
+**Install Python:**
+- Download from [python.org](https://www.python.org/)
+- Or use [pyenv](https://github.com/pyenv/pyenv)
+
+### 7. Redis
+Required for Celery task queue (backend only).
+
+**Install Redis:**
+- **macOS**: `brew install redis`
+- **Ubuntu**: `sudo apt install redis-server`
+- **Windows**: Use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) or Docker
+- **Docker**: `docker run -p 6379:6379 redis:alpine`
+
+### 8. Docker (Optional)
+For running the full stack with Docker Compose.
+
+**Install Docker:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+## Development Tools (Recommended)
+
+### IDE/Editor
+- **VS Code** (recommended) with extensions:
+  - ESLint
+  - Prettier
+  - Tailwind CSS IntelliSense
+  - Python (if running backend)
+
+### Database Management
+- **Supabase Dashboard** (built-in)
+- Or [TablePlus](https://tableplus.com/) / [pgAdmin](https://www.pgadmin.org/)
+
+## API Keys & Credentials Checklist
+
+Before proceeding, gather these credentials:
+
+- [ ] Supabase Project URL
+- [ ] Supabase Anon Key
+- [ ] Supabase Service Role Key
+- [ ] OpenAI API Key
+- [ ] (Optional) Discord Bot Token
+- [ ] (Optional) Slack App Credentials
+- [ ] (Optional) Google OAuth Credentials
+
+## System Requirements
+
+### Minimum
+- **RAM**: 4GB
+- **Storage**: 2GB free space
+- **OS**: Windows 10+, macOS 10.15+, or Linux
+
+### Recommended
+- **RAM**: 8GB or more
+- **Storage**: 5GB free space
+- **OS**: Latest version
+
+## Network Requirements
+
+Ensure you have access to:
+- npm registry (registry.npmjs.org)
+- GitHub (github.com)
+- Supabase API endpoints
+- OpenAI API (api.openai.com)
+
+## Next Steps
+
+Once you have all prerequisites ready:
+
+1. **For local development**: Continue to [Local Setup](/docs/getting-started/local-setup)
+2. **For quick deployment**: Skip to [Quick Deployment](/docs/getting-started/quick-deployment)
+3. **Need help?**: Check [Troubleshooting](/docs/troubleshooting)

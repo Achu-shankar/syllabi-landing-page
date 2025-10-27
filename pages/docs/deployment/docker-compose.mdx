@@ -1,0 +1,796 @@
+# Deploy with Docker Compose
+
+Complete guide to self-hosting Syllabi using Docker Compose.
+
+## Overview
+
+Docker Compose allows you to run the entire Syllabi stack locally or on your own server:
+
+- ✅ **Full control** over infrastructure
+- ✅ **Single command** to start everything
+- ✅ **Consistent environment** across dev/staging/prod
+- ✅ **Easy backup** and migration
+- ✅ **Cost-effective** for self-hosting
+
+## Architecture
+
+```
+Docker Compose Stack
+├── frontend (Next.js)    :3000
+├── backend (FastAPI)     :8000
+├── worker (Celery)       (background)
+├── redis (Message Queue) :6379
+└── postgres (Optional)   :5432
+```
+
+**Note**: We use Supabase for database and storage, but you can optionally run PostgreSQL locally.
+
+## Prerequisites
+
+- Docker Engine 20.10+
+- Docker Compose v2.0+
+- 4GB RAM minimum
+- OpenAI API key
+- Supabase account (or local PostgreSQL)
+
+## Step 1: Clone Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/syllabi.git
+cd syllabi
+```
+
+## Step 2: Create Docker Compose File
+
+Create `docker-compose.yml` in project root:
+
+```yaml
+version: '3.8'
+
+services:
+  # Redis for Celery task queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL (optional - if not using Supabase)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_USER: syllabi
+  #     POSTGRES_PASSWORD: syllabi_password
+  #     POSTGRES_DB: syllabi_db
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U syllabi"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 3
+
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - ASSEMBLY_AI_API_KEY=${ASSEMBLY_AI_API_KEY}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_BACKEND_URL=http://backend:8000
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+    ports:
+      - "3000:3000"
+    environment:
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  # postgres_data:  # Uncomment if using local PostgreSQL
+
+networks:
+  default:
+    name: syllabi_network
+```
+
+## Step 3: Create Frontend Dockerfile
+
+Create `frontend/Dockerfile`:
+
+```dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Build arguments for environment variables
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_BACKEND_URL
+ARG NEXT_PUBLIC_APP_URL
+
+# Set environment variables for build
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
+# Build Next.js
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
+```
+
+Update `frontend/next.config.mjs` for standalone output:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone', // Enable standalone output for Docker
+  // ... rest of your config
+}
+
+export default nextConfig
+```
+
+## Step 4: Create Environment File
+
+Create `.env` in project root:
+
+```bash
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-...
+
+# Backend Security
+BACKEND_API_KEY=your-random-secret-key-here
+
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional: Additional AI providers
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+
+# Optional: Transcription
+ASSEMBLY_AI_API_KEY=...
+YOUTUBE_API_KEY=...
+```
+
+**Generate secure API key**:
+```bash
+openssl rand -hex 32
+```
+
+## Step 5: Start Services
+
+### Start All Services
+
+```bash
+docker-compose up -d
+```
+
+This will:
+1. Pull required images (Redis, PostgreSQL if enabled)
+2. Build frontend and backend images
+3. Start all services
+4. Create network and volumes
+
+### Check Service Status
+
+```bash
+docker-compose ps
+```
+
+Expected output:
+```
+NAME                SERVICE    STATUS         PORTS
+syllabi-backend-1   backend    Up (healthy)   0.0.0.0:8000->8000/tcp
+syllabi-frontend-1  frontend   Up             0.0.0.0:3000->3000/tcp
+syllabi-redis-1     redis      Up (healthy)   0.0.0.0:6379->6379/tcp
+syllabi-worker-1    worker     Up
+```
+
+### View Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f frontend
+docker-compose logs -f backend
+docker-compose logs -f worker
+
+# Last 100 lines
+docker-compose logs --tail=100 backend
+```
+
+## Step 6: Verify Deployment
+
+### 6.1 Check Frontend
+
+Open browser:
+```
+http://localhost:3000
+```
+
+Should see Syllabi login page.
+
+### 6.2 Check Backend API
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "services": {
+    "redis": "connected",
+    "database": "connected"
+  }
+}
+```
+
+### 6.3 Check Worker
+
+```bash
+docker-compose logs worker | grep "ready"
+```
+
+Should see:
+```
+celery@worker ready.
+```
+
+### 6.4 Test End-to-End
+
+1. Sign up for new account
+2. Create a chatbot
+3. Upload a document
+4. Check worker logs for processing
+5. Chat with the document
+
+## Production Deployment
+
+### Deploy to VPS (DigitalOcean, AWS EC2, etc.)
+
+#### 1. Provision Server
+
+Requirements:
+- Ubuntu 22.04 LTS
+- 4GB RAM (8GB recommended)
+- 50GB SSD
+- Public IP address
+
+#### 2. Install Docker
+
+```bash
+# Update packages
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Install Docker Compose
+sudo apt install docker-compose-plugin
+```
+
+#### 3. Clone and Configure
+
+```bash
+# Clone repository
+git clone https://github.com/YOUR_USERNAME/syllabi.git
+cd syllabi
+
+# Create .env file
+nano .env
+# Add all environment variables
+
+# Update app URL
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+```
+
+#### 4. Set Up Reverse Proxy (Nginx)
+
+Install Nginx:
+```bash
+sudo apt install nginx certbot python3-certbot-nginx
+```
+
+Create Nginx config `/etc/nginx/sites-available/syllabi`:
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    # Frontend
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend API
+    location /api/backend {
+        rewrite ^/api/backend/(.*) /$1 break;
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+Enable site:
+```bash
+sudo ln -s /etc/nginx/sites-available/syllabi /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### 5. Set Up SSL with Let's Encrypt
+
+```bash
+sudo certbot --nginx -d yourdomain.com
+```
+
+Certbot will automatically configure HTTPS.
+
+#### 6. Start Services
+
+```bash
+docker-compose up -d
+```
+
+#### 7. Set Up Auto-Start
+
+Create systemd service `/etc/systemd/system/syllabi.service`:
+
+```ini
+[Unit]
+Description=Syllabi Docker Compose
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/ubuntu/syllabi
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable service:
+```bash
+sudo systemctl enable syllabi
+sudo systemctl start syllabi
+```
+
+## Management Commands
+
+### Restart Services
+
+```bash
+# Restart all
+docker-compose restart
+
+# Restart specific service
+docker-compose restart backend
+docker-compose restart worker
+```
+
+### Update Application
+
+```bash
+# Pull latest code
+git pull origin main
+
+# Rebuild and restart
+docker-compose up -d --build
+
+# Or rebuild specific service
+docker-compose up -d --build frontend
+```
+
+### View Resource Usage
+
+```bash
+docker stats
+```
+
+### Clean Up
+
+```bash
+# Stop and remove containers
+docker-compose down
+
+# Remove volumes (⚠️ deletes data)
+docker-compose down -v
+
+# Remove images
+docker-compose down --rmi all
+```
+
+### Backup Data
+
+```bash
+# Backup Redis data
+docker exec syllabi-redis-1 redis-cli SAVE
+docker cp syllabi-redis-1:/data/dump.rdb ./backup/redis-$(date +%Y%m%d).rdb
+
+# Backup PostgreSQL (if using local DB)
+docker exec syllabi-postgres-1 pg_dump -U syllabi syllabi_db > backup/postgres-$(date +%Y%m%d).sql
+```
+
+### Restore Data
+
+```bash
+# Restore Redis
+docker cp ./backup/redis-20240115.rdb syllabi-redis-1:/data/dump.rdb
+docker-compose restart redis
+
+# Restore PostgreSQL
+cat backup/postgres-20240115.sql | docker exec -i syllabi-postgres-1 psql -U syllabi syllabi_db
+```
+
+## Scaling
+
+### Scale Workers
+
+Run multiple worker instances:
+
+```bash
+docker-compose up -d --scale worker=3
+```
+
+Update `docker-compose.yml` to make it permanent:
+
+```yaml
+worker:
+  # ... config
+  deploy:
+    replicas: 3
+```
+
+### Load Balancing Frontend
+
+Use Nginx to load balance multiple frontend instances:
+
+```yaml
+# docker-compose.yml
+frontend:
+  # ... config
+  deploy:
+    replicas: 2
+```
+
+Update Nginx config:
+
+```nginx
+upstream frontend {
+    server localhost:3000;
+    server localhost:3001;
+}
+
+server {
+    location / {
+        proxy_pass http://frontend;
+    }
+}
+```
+
+## Monitoring
+
+### Docker Compose Logs
+
+```bash
+# Tail all logs
+docker-compose logs -f
+
+# Filter by service
+docker-compose logs -f backend | grep ERROR
+
+# Last 1000 lines
+docker-compose logs --tail=1000
+```
+
+### Add Prometheus + Grafana
+
+Create `docker-compose.monitoring.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  prometheus_data:
+  grafana_data:
+```
+
+Start monitoring:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+## Troubleshooting
+
+### Services Won't Start
+
+**Check logs**:
+```bash
+docker-compose logs
+```
+
+**Check disk space**:
+```bash
+df -h
+```
+
+**Check memory**:
+```bash
+free -h
+```
+
+### Frontend Build Fails
+
+**Issue**: Out of memory during build
+
+**Solution**: Increase Docker memory limit or build on host:
+
+```bash
+# Build on host
+cd frontend
+npm run build
+
+# Then use pre-built files in Docker
+```
+
+### Worker Not Processing Tasks
+
+**Check Redis connection**:
+```bash
+docker exec syllabi-worker-1 python -c "import redis; r=redis.from_url('redis://redis:6379/0'); print(r.ping())"
+```
+
+**Check Celery status**:
+```bash
+docker exec syllabi-worker-1 celery -A app.workers.celery_app inspect active
+```
+
+### Port Already in Use
+
+**Issue**: `Port 3000 is already allocated`
+
+**Solution**: Change port in `docker-compose.yml`:
+```yaml
+frontend:
+  ports:
+    - "3001:3000"  # Use different host port
+```
+
+## Security Best Practices
+
+### 1. Use Docker Secrets
+
+Instead of `.env` file, use Docker secrets:
+
+```yaml
+services:
+  backend:
+    secrets:
+      - openai_api_key
+    environment:
+      - OPENAI_API_KEY_FILE=/run/secrets/openai_api_key
+
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
+```
+
+### 2. Run as Non-Root User
+
+Already configured in Dockerfiles:
+```dockerfile
+RUN adduser --system --uid 1001 nextjs
+USER nextjs
+```
+
+### 3. Limit Resources
+
+Prevent resource exhaustion:
+
+```yaml
+services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+```
+
+### 4. Use Private Networks
+
+Isolate services:
+
+```yaml
+services:
+  redis:
+    networks:
+      - backend_network  # Not exposed to public
+
+networks:
+  backend_network:
+    internal: true  # No external access
+  frontend_network:
+```
+
+### 5. Update Regularly
+
+```bash
+# Update base images
+docker-compose pull
+
+# Rebuild with latest code
+docker-compose up -d --build
+```
+
+## Next Steps
+
+- [Environment Variables Reference](/docs/deployment/environment-variables)
+- [Vercel Frontend Deployment](/docs/deployment/vercel-frontend)
+- [Railway Backend Deployment](/docs/deployment/railway-backend)
+- [Troubleshooting](/docs/troubleshooting/common-errors)
+
+## Production Checklist
+
+- [ ] Server provisioned with adequate resources
+- [ ] Docker and Docker Compose installed
+- [ ] Repository cloned and configured
+- [ ] All environment variables set
+- [ ] SSL certificate configured
+- [ ] Nginx reverse proxy set up
+- [ ] Services start automatically on boot
+- [ ] Monitoring and logging configured
+- [ ] Backup strategy implemented
+- [ ] Security hardening completed
+- [ ] Resource limits configured
+- [ ] Health checks working
+- [ ] All services healthy
+- [ ] End-to-end testing passed

@@ -1,0 +1,9 @@
+<svg width="600" height="450" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="450" fill="#fdf4ff"/>
+  <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="#a855f7">
+    Chatbot Builder Screenshot Placeholder
+  </text>
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="14" fill="#c084fc">
+    Add screenshot of visual chatbot builder interface
+  </text>
+</svg>

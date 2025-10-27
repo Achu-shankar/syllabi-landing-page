@@ -1,0 +1,554 @@
+# Contributing Guide
+
+How to contribute to Syllabi - code style, testing, and PR process.
+
+## Getting Started
+
+### 1. Fork and Clone
+
+```bash
+# Fork the repository on GitHub
+# Then clone your fork
+git clone https://github.com/YOUR_USERNAME/syllabi.git
+cd syllabi
+```
+
+### 2. Set Up Development Environment
+
+Follow the [Local Setup Guide](/docs/getting-started/local-setup) to get your development environment running.
+
+### 3. Create a Branch
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/bug-description
+```
+
+Branch naming conventions:
+- `feature/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation changes
+- `refactor/` - Code refactoring
+- `test/` - Test additions or changes
+
+## Code Style
+
+### Frontend (Next.js/React)
+
+#### TypeScript
+
+- **Use TypeScript strictly** - no `any` types unless absolutely necessary
+- **Prefer interfaces over types** for object shapes
+- **Use explicit return types** for functions
+
+```typescript
+// Good
+interface ChatMessage {
+  id: string
+  content: string
+  role: 'user' | 'assistant' | 'system'
+}
+
+function formatMessage(message: ChatMessage): string {
+  return `${message.role}: ${message.content}`
+}
+
+// Avoid
+type ChatMessage = any
+function formatMessage(message) {
+  return `${message.role}: ${message.content}`
+}
+```
+
+#### React Components
+
+- **Use functional components** with hooks
+- **Prefer named exports** for components
+- **Use React.memo** for expensive components
+- **Extract complex logic** into custom hooks
+
+```typescript
+// Good
+export function ChatMessage({ message }: { message: ChatMessage }) {
+  const formattedTime = useFormattedTime(message.createdAt)
+
+  return (
+    <div className="message">
+      <p>{message.content}</p>
+      <time>{formattedTime}</time>
+    </div>
+  )
+}
+
+// Avoid default exports
+export default function ChatMessage() { ... }
+```
+
+#### CSS/Styling
+
+- **Use Tailwind CSS** for styling
+- **CSS variables** for theme colors (defined in globals.css)
+- **Avoid inline styles** unless dynamic
+
+```typescript
+// Good
+<div className="rounded-lg bg-primary p-4 text-white">
+  Content
+</div>
+
+// Avoid
+<div style={{ borderRadius: '8px', padding: '16px' }}>
+  Content
+</div>
+```
+
+#### File Organization
+
+```
+src/
+├── app/
+│   ├── (auth)/          # Auth-related pages
+│   ├── chat/            # Chat interface
+│   └── api/             # API routes
+├── components/
+│   ├── ui/              # Reusable UI components
+│   └── providers/       # Context providers
+├── lib/
+│   ├── db/              # Database utilities
+│   ├── ai/              # AI/LLM utilities
+│   └── utils/           # General utilities
+└── types/               # TypeScript type definitions
+```
+
+### Backend (FastAPI/Python)
+
+#### Python Style
+
+- **Follow PEP 8** style guide
+- **Use type hints** for all function parameters and returns
+- **Use Pydantic models** for data validation
+- **Async/await** for I/O operations
+
+```python
+# Good
+from typing import List
+from pydantic import BaseModel
+
+class DocumentChunk(BaseModel):
+    id: str
+    text: str
+    embedding: List[float]
+
+async def get_chunks(chatbot_id: str) -> List[DocumentChunk]:
+    """Retrieve document chunks for a chatbot."""
+    return await db.get_chunks(chatbot_id)
+
+# Avoid
+def get_chunks(chatbot_id):
+    return db.get_chunks(chatbot_id)
+```
+
+#### Error Handling
+
+```python
+from fastapi import HTTPException, status
+
+async def get_chatbot(chatbot_id: str, user_id: str):
+    chatbot = await db.chatbots.find_one({
+        "_id": chatbot_id,
+        "user_id": user_id
+    })
+
+    if not chatbot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chatbot {chatbot_id} not found"
+        )
+
+    return chatbot
+```
+
+#### File Organization
+
+```
+backend/
+├── app/
+│   ├── api/
+│   │   └── routes/      # API endpoints
+│   ├── services/        # Business logic
+│   ├── models/          # Pydantic models
+│   └── core/            # Config, dependencies
+├── workers/             # Celery tasks
+└── tests/               # Test files
+```
+
+## Testing
+
+### Frontend Tests
+
+We use **Jest** and **React Testing Library**.
+
+```typescript
+import { render, screen } from '@testing-library/react'
+import { ChatMessage } from './chat-message'
+
+describe('ChatMessage', () => {
+  it('renders message content', () => {
+    const message = {
+      id: '1',
+      content: 'Hello world',
+      role: 'user' as const,
+    }
+
+    render(<ChatMessage message={message} />)
+
+    expect(screen.getByText('Hello world')).toBeInTheDocument()
+  })
+})
+```
+
+Run tests:
+```bash
+cd frontend
+npm test              # Run all tests
+npm test -- --watch   # Watch mode
+npm test -- --coverage # Coverage report
+```
+
+### Backend Tests
+
+We use **pytest** and **pytest-asyncio**.
+
+```python
+import pytest
+from app.services.chunking import chunk_document
+
+@pytest.mark.asyncio
+async def test_chunk_document():
+    text = "Long document text..." * 100
+    chunks = await chunk_document(text, chunk_size=500)
+
+    assert len(chunks) > 1
+    assert all(len(chunk) <= 500 for chunk in chunks)
+```
+
+Run tests:
+```bash
+cd backend
+pytest                    # Run all tests
+pytest -v                 # Verbose output
+pytest --cov=app          # Coverage report
+pytest -k "test_chunk"    # Run specific tests
+```
+
+## Pull Request Process
+
+### 1. Before Submitting
+
+- ✅ **Tests pass** locally
+- ✅ **No TypeScript errors** (`npm run type-check`)
+- ✅ **Code is formatted** (Prettier)
+- ✅ **Lint checks pass** (ESLint)
+- ✅ **Commits are clean** and descriptive
+
+```bash
+# Frontend checks
+cd frontend
+npm run type-check
+npm run lint
+npm test
+
+# Backend checks
+cd backend
+pytest
+ruff check .
+mypy .
+```
+
+### 2. Commit Messages
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add document folder organization
+fix: resolve streaming text display issue
+docs: update database schema documentation
+refactor: extract chat logic into custom hook
+test: add tests for message component
+```
+
+Format:
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+Types:
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation only
+- `style` - Formatting changes
+- `refactor` - Code restructuring
+- `test` - Adding tests
+- `chore` - Maintenance tasks
+
+### 3. Create Pull Request
+
+**Title**: Use conventional commit format
+```
+feat: Add support for video transcription
+```
+
+**Description Template**:
+```markdown
+## What does this PR do?
+Brief description of the changes.
+
+## Type of change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+
+## How Has This Been Tested?
+Describe the tests you ran and how to reproduce them.
+
+## Screenshots (if applicable)
+Add screenshots for UI changes.
+
+## Checklist
+- [ ] My code follows the style guidelines
+- [ ] I have performed a self-review
+- [ ] I have commented my code where needed
+- [ ] I have updated the documentation
+- [ ] My changes generate no new warnings
+- [ ] I have added tests that prove my fix is effective
+- [ ] New and existing tests pass locally
+```
+
+### 4. Code Review Process
+
+1. **Automated checks** must pass (GitHub Actions)
+2. **At least one approval** from maintainers required
+3. **Address review comments** promptly
+4. **Keep PR focused** - one feature/fix per PR
+5. **Rebase if needed** to resolve conflicts
+
+### 5. After Approval
+
+- Maintainer will merge using **Squash and Merge**
+- Your PR will be included in the next release
+- You'll be added to contributors list
+
+## Development Workflow
+
+### Hot Reload Development
+
+Both frontend and backend support hot reload:
+
+```bash
+# Terminal 1 - Frontend (auto-reloads on file changes)
+cd frontend
+npm run dev
+
+# Terminal 2 - Backend (auto-reloads with --reload flag)
+cd backend
+uvicorn app.main:app --reload
+
+# Terminal 3 - Celery worker (manual restart needed)
+cd backend
+celery -A app.workers.celery_app worker --loglevel=info
+```
+
+### Database Migrations
+
+When modifying the database schema:
+
+1. **Create migration file** in `frontend/supabase/migrations/`
+2. **Name convention**: `YYYYMMDD_description.sql`
+3. **Include rollback** if possible
+4. **Test locally** before committing
+
+```sql
+-- 20240115_add_chatbot_status.sql
+
+-- Add status column
+ALTER TABLE chatbots
+ADD COLUMN status TEXT DEFAULT 'active'
+CHECK (status IN ('active', 'paused', 'archived'));
+
+-- Create index
+CREATE INDEX idx_chatbots_status ON chatbots(status);
+
+-- To rollback (commented out):
+-- ALTER TABLE chatbots DROP COLUMN status;
+-- DROP INDEX idx_chatbots_status;
+```
+
+### Adding New Dependencies
+
+#### Frontend
+
+```bash
+cd frontend
+npm install package-name
+```
+
+Document why the package is needed in PR description.
+
+#### Backend
+
+```bash
+cd backend
+pip install package-name
+pip freeze > requirements.txt
+```
+
+Update both `requirements.txt` and `pyproject.toml` if using Poetry.
+
+## Feature Development Guidelines
+
+### Adding a New Integration (e.g., Telegram)
+
+1. **Backend**: Create integration service
+   ```python
+   # backend/app/services/integrations/telegram.py
+   class TelegramIntegration:
+       async def send_message(self, chat_id: str, text: str):
+           ...
+   ```
+
+2. **Frontend**: Add UI for configuration
+   ```typescript
+   // frontend/src/components/integrations/telegram-config.tsx
+   export function TelegramConfig() { ... }
+   ```
+
+3. **Database**: Add to integrations table
+   ```sql
+   -- Telegram config stored in integrations.config JSONB
+   {
+     "bot_token": "...",
+     "chat_id": "..."
+   }
+   ```
+
+4. **Tests**: Integration tests for both ends
+5. **Documentation**: Update user guide
+
+### Adding a New Skill/Action
+
+1. **Define skill interface**
+   ```typescript
+   // frontend/src/lib/ai/skills/weather.ts
+   export const weatherSkill = {
+     name: 'getWeather',
+     description: 'Get current weather for a location',
+     parameters: z.object({
+       location: z.string(),
+     }),
+     execute: async ({ location }) => {
+       // Implementation
+     },
+   }
+   ```
+
+2. **Register in skill registry**
+3. **Add to skill selection UI**
+4. **Write tests**
+5. **Document usage**
+
+## Performance Considerations
+
+### Frontend
+
+- **Code splitting**: Use dynamic imports for heavy components
+- **Image optimization**: Use Next.js Image component
+- **Memoization**: Use React.memo for expensive renders
+- **Debouncing**: Debounce search inputs and API calls
+
+```typescript
+import dynamic from 'next/dynamic'
+
+// Code splitting
+const HeavyComponent = dynamic(() => import('./heavy-component'), {
+  loading: () => <LoadingSpinner />,
+})
+
+// Debouncing
+import { useDebouncedCallback } from 'use-debounce'
+
+const debouncedSearch = useDebouncedCallback(
+  (query: string) => {
+    performSearch(query)
+  },
+  500
+)
+```
+
+### Backend
+
+- **Use async/await**: For all I/O operations
+- **Batch operations**: Reduce database queries
+- **Caching**: Cache expensive computations
+- **Background tasks**: Use Celery for long operations
+
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def get_embedding_model():
+    """Cache model loading"""
+    return load_model()
+```
+
+## Security
+
+### Never Commit
+
+- ❌ API keys or secrets
+- ❌ `.env` files (use `.env.example`)
+- ❌ Personal data or test credentials
+- ❌ Database dumps with real data
+
+### Always
+
+- ✅ Use environment variables for secrets
+- ✅ Validate user input (Pydantic/Zod)
+- ✅ Check authorization (RLS policies)
+- ✅ Sanitize user-generated content
+- ✅ Use parameterized queries
+
+```typescript
+// Good - using environment variables
+const apiKey = process.env.OPENAI_API_KEY
+
+// Bad - hardcoded secrets
+const apiKey = "sk-..." // NEVER DO THIS
+```
+
+## Getting Help
+
+- 💬 **GitHub Discussions** - Ask questions
+- 🐛 **GitHub Issues** - Report bugs
+- 📖 **Documentation** - Check existing docs first
+- 📧 **Email** - For security issues: security@syllabi.io
+
+## Recognition
+
+Contributors are recognized in:
+- `CONTRIBUTORS.md` file
+- Release notes
+- GitHub contributors graph
+
+Thank you for contributing to Syllabi! 🎉
+
+## Next Steps
+
+- [Frontend Architecture](/docs/development/frontend-architecture)
+- [Backend Architecture](/docs/development/backend-architecture)
+- [Database Schema](/docs/development/database-schema)

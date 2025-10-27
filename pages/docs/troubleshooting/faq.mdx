@@ -1,0 +1,536 @@
+# Frequently Asked Questions
+
+Common questions about Syllabi.
+
+## General Questions
+
+### What is Syllabi?
+
+Syllabi is an open-source platform for building AI-powered chatbots that can answer questions based on your documents and knowledge base. It uses RAG (Retrieval-Augmented Generation) to provide accurate, cited responses.
+
+### Is Syllabi free?
+
+Yes! Syllabi is open-source and free to self-host. You only pay for:
+- Cloud hosting (if not self-hosting)
+- AI API usage (OpenAI, Anthropic, etc.)
+- Database/storage (Supabase has generous free tier)
+
+### Do I need coding knowledge to use Syllabi?
+
+**To use a deployed instance**: No coding required
+**To deploy/customize**: Basic technical knowledge helpful
+**To contribute**: JavaScript/TypeScript and Python knowledge needed
+
+### What's the difference between frontend-only and with backend?
+
+**Frontend-only** (Next.js):
+- ✅ Chat interface with AI
+- ✅ Document upload and RAG
+- ✅ Basic PDF processing
+- ✅ User authentication
+- ❌ Advanced document processing
+- ❌ Video transcription
+- ❌ Heavy background tasks
+
+**With backend** (FastAPI + Celery):
+- ✅ Everything from frontend
+- ✅ Advanced PDF parsing
+- ✅ Video/audio transcription
+- ✅ Background job processing
+- ✅ Custom integrations
+
+**Recommendation**: Start with frontend-only, add backend if needed.
+
+## Features and Capabilities
+
+### What file types are supported?
+
+**Directly supported**:
+- 📄 PDF (.pdf)
+- 📝 Word documents (.docx)
+- 📄 Text files (.txt, .md)
+- 📊 CSV files (.csv)
+
+**With backend**:
+- 🎥 Video files (MP4, etc.) - transcribed
+- 🎵 Audio files (MP3, WAV, etc.) - transcribed
+- 🌐 YouTube videos - transcript extracted
+- 🌐 Web pages - content extracted
+
+### How many documents can I upload?
+
+No hard limit, but consider:
+- **Storage**: Depends on your Supabase plan
+- **Performance**: More documents = slower searches
+- **Costs**: More embeddings = higher OpenAI costs
+
+**Recommendations**:
+- Small chatbot: 10-50 documents
+- Medium: 50-200 documents
+- Large: 200-1000 documents
+- Organize into folders for better performance
+
+### What AI models are supported?
+
+**OpenAI**:
+- gpt-4o (best quality, expensive)
+- gpt-4o-mini (fast, cheap, recommended)
+- gpt-4-turbo
+
+**Anthropic**:
+- claude-3-5-sonnet
+- claude-3-opus
+- claude-3-haiku
+
+**Google**:
+- gemini-pro
+- gemini-pro-vision
+
+**Others**: Any model supported by Vercel AI SDK
+
+### Can I use multiple chatbots?
+
+Yes! Create unlimited chatbots, each with:
+- Own set of documents
+- Own configuration
+- Own theme/branding
+- Own integrations
+
+### Does it support multiple languages?
+
+Yes! The AI models support 50+ languages:
+- Upload documents in any language
+- Users can ask questions in any language
+- Responses in the same language as the question
+
+**Note**: Some features (transcription) work best with English.
+
+## Technical Questions
+
+### What technology stack does Syllabi use?
+
+**Frontend**:
+- Next.js 15 (App Router)
+- React 19
+- Vercel AI SDK v5
+- Supabase (auth, database, storage)
+- Tailwind CSS
+
+**Backend** (optional):
+- Python 3.11
+- FastAPI
+- Celery (background jobs)
+- Redis (task queue)
+
+**Database**:
+- PostgreSQL (via Supabase)
+- pgvector (vector similarity search)
+
+### How does RAG (Retrieval-Augmented Generation) work?
+
+1. **Document Upload**: Document split into chunks (512-1024 tokens)
+2. **Embedding**: Each chunk converted to vector embedding
+3. **Storage**: Embeddings stored in PostgreSQL with pgvector
+4. **Query Time**: User question converted to embedding
+5. **Search**: Find most similar chunks (cosine similarity)
+6. **Generation**: AI generates answer using retrieved chunks as context
+
+### How are documents chunked?
+
+**Default strategy**:
+- Chunk size: 512-1024 tokens
+- Overlap: 10-20% between chunks
+- Respects paragraph boundaries when possible
+- Preserves context across chunks
+
+**Configurable** in advanced settings.
+
+### Where is my data stored?
+
+**Documents**: Supabase Storage (S3-compatible)
+**Chunks & Embeddings**: PostgreSQL database (Supabase)
+**Conversations**: PostgreSQL database
+**User Data**: PostgreSQL database (with RLS)
+
+**Security**: All data encrypted at rest and in transit (HTTPS/TLS).
+
+### Is my data private?
+
+**Yes**, with caveats:
+
+**Your infrastructure**:
+- ✅ Data in your Supabase project
+- ✅ Row Level Security enforced
+- ✅ Only you have access
+
+**Third-party APIs**:
+- ⚠️ OpenAI/Anthropic process messages (check their privacy policy)
+- ⚠️ Not sent to AI training by default (API vs ChatGPT)
+- ✅ Can use Azure OpenAI for enterprise privacy
+
+**Recommendation**: For highly sensitive data, use Azure OpenAI or self-hosted models.
+
+## Deployment and Hosting
+
+### Where can I deploy Syllabi?
+
+**Frontend**:
+- Vercel (recommended, easiest)
+- Netlify
+- AWS Amplify
+- Docker / self-hosted
+
+**Backend**:
+- Railway (recommended)
+- Render
+- AWS ECS / Fargate
+- Docker Compose
+
+**Database**:
+- Supabase (managed, recommended)
+- Self-hosted PostgreSQL
+
+### How much does it cost to run?
+
+**Minimal setup** (1000 conversations/month):
+```
+Vercel: Free tier (hobby)
+Supabase: Free tier
+OpenAI (gpt-4o-mini): ~$5-10/month
+Total: $5-10/month
+```
+
+**Medium setup** (10k conversations/month):
+```
+Vercel: Free tier or $20/month (Pro)
+Supabase: $25/month (Pro)
+Railway (backend): $5-20/month
+OpenAI: $50-100/month
+Total: $80-165/month
+```
+
+**Large setup** (100k+ conversations/month):
+```
+Vercel Pro: $20/month
+Supabase Pro: $25/month
+Railway: $50-200/month
+OpenAI: $500-1000/month
+Total: $595-1245/month
+```
+
+### Can I run everything locally?
+
+Yes! Perfect for development:
+
+```bash
+# Frontend
+cd frontend
+npm run dev
+
+# Backend (optional)
+cd backend
+uvicorn app.main:app --reload
+
+# Celery worker (optional)
+celery -A app.workers.celery_app worker --loglevel=info
+
+# Redis (for backend)
+docker run -p 6379:6379 redis:alpine
+```
+
+**Database**: Use Supabase cloud (free tier) or local PostgreSQL.
+
+### Do I need a domain name?
+
+**No**, but recommended:
+
+**Without custom domain**:
+- Vercel: `your-app.vercel.app`
+- Works fine, just longer URL
+
+**With custom domain**:
+- Vercel: `chat.yourdomain.com`
+- More professional
+- Better branding
+- Free SSL included
+
+## Integration Questions
+
+### Can I embed the chatbot on my website?
+
+Yes! Multiple options:
+
+**1. Popup widget**:
+```html
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'your-id',
+    mode: 'popup'
+  };
+</script>
+<script src="https://your-app.com/embed.js" async></script>
+```
+
+**2. Inline embed**:
+```html
+<div id="chat-container"></div>
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'your-id',
+    mode: 'inline',
+    container: '#chat-container'
+  };
+</script>
+```
+
+**3. Full page**: Direct link to chatbot page
+
+See [Embedding Widget](/docs/user-guide/embedding-widget) for details.
+
+### Can I integrate with Discord/Slack?
+
+**Yes!** Syllabi supports:
+- ✅ Discord (bot integration)
+- ✅ Slack (app integration)
+- 🔜 Microsoft Teams (coming soon)
+- 🔜 Telegram (coming soon)
+
+See [Integrations](/docs/user-guide/integrations) guide.
+
+### Does it have an API?
+
+Yes! REST API for:
+- Sending messages
+- Uploading documents
+- Managing chatbots
+- Retrieving conversations
+
+See [API Reference](/docs/api-reference/chat-api).
+
+### Can I use it with my existing authentication system?
+
+Yes! Options:
+
+**1. Use Supabase auth** (default)
+**2. Custom auth**: Implement your own
+**3. SSO**: Configure SAML/OAuth
+**4. Anonymous**: Allow unauthenticated access
+
+## Customization Questions
+
+### Can I change the appearance?
+
+Yes! Fully customizable:
+- Primary colors
+- Message bubble colors
+- Fonts
+- Logo
+- Custom CSS
+
+See [Customizing Theme](/docs/user-guide/customizing-theme).
+
+### Can I remove Syllabi branding?
+
+Yes! Since it's open-source:
+- Upload your logo
+- Customize all colors
+- Use your domain
+- Remove "Powered by Syllabi" (optional)
+
+Complete white-labeling supported.
+
+### Can I add custom skills/actions?
+
+Yes! Create custom skills to:
+- Call external APIs
+- Query databases
+- Send emails
+- Check calendars
+- Perform calculations
+- And more
+
+See [Skills & Actions](/docs/user-guide/skills-actions).
+
+## Usage and Limits
+
+### Are there rate limits?
+
+**API requests**:
+- Free tier: 20 requests/minute
+- Pro tier: 100 requests/minute
+- Enterprise: Custom
+
+**Document uploads**:
+- Max file size: 50MB
+- Rate: 20 uploads/minute
+
+**AI provider limits**: Follow OpenAI/Anthropic limits
+
+### How many messages can I send?
+
+**No hard limit**, but costs scale with usage:
+- Each message = API call to OpenAI/Anthropic
+- More messages = higher costs
+- Consider caching for repeated questions
+
+### Can multiple users use the same chatbot simultaneously?
+
+**Yes!** No limit on concurrent users. Each user gets their own session.
+
+### How long are conversations stored?
+
+**Default**: Indefinitely (until manually deleted)
+
+**Can configure**:
+- Auto-delete after X days
+- Archive old conversations
+- Export and delete
+
+## Troubleshooting
+
+### Why is my chatbot giving wrong answers?
+
+**Common causes**:
+
+1. **Hallucination** (making things up):
+   - Lower temperature (0.2-0.4)
+   - Improve system prompt
+   - Ensure documents are being retrieved
+
+2. **Outdated information**:
+   - Update documents
+   - Remove old documents
+
+3. **Not using documents**:
+   - Check retrieval is working
+   - Verify embeddings were created
+   - Update system prompt to emphasize using documents
+
+4. **Ambiguous questions**:
+   - Improve suggested prompts
+   - Guide users to ask clearer questions
+
+### Why is document processing so slow?
+
+**Expected times**:
+- Small PDF (< 5MB): 30-60 seconds
+- Medium PDF (5-20MB): 1-3 minutes
+- Large PDF (20-50MB): 3-10 minutes
+
+**If slower**:
+- Check backend logs for errors
+- Verify worker is running
+- Check Redis connection
+- May need more resources (upgrade plan)
+
+### How do I reduce OpenAI costs?
+
+**Strategies**:
+
+1. **Use cheaper model**:
+   - gpt-4o-mini instead of gpt-4o (100x cheaper!)
+
+2. **Reduce context**:
+   - Lower max tokens
+   - Smaller context window
+   - Fewer document chunks
+
+3. **Cache responses**:
+   - Cache common questions
+   - Use Redis caching
+
+4. **Optimize retrieval**:
+   - Better chunking strategy
+   - Higher similarity threshold
+   - Fewer chunks returned
+
+See [Common Errors](/docs/troubleshooting/common-errors) for more.
+
+## Contributing
+
+### How can I contribute to Syllabi?
+
+**Ways to contribute**:
+- 🐛 Report bugs
+- 💡 Suggest features
+- 📝 Improve documentation
+- 💻 Submit code (PRs)
+- 🌍 Translate to other languages
+- ⭐ Star on GitHub
+
+See [Contributing Guide](/docs/development/contributing).
+
+### I found a bug, what should I do?
+
+1. **Check if already reported**: Search [GitHub Issues](https://github.com/yourorg/syllabi/issues)
+2. **Provide details**:
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Error messages
+   - Screenshots
+3. **Submit issue** on GitHub
+
+### Can I use Syllabi commercially?
+
+**Yes!** MIT License allows:
+- ✅ Commercial use
+- ✅ Modification
+- ✅ Distribution
+- ✅ Private use
+
+**Requirements**:
+- Include original license
+- Include copyright notice
+
+**No warranty** provided (AS-IS).
+
+## Getting Help
+
+### Where can I get support?
+
+**Community support** (free):
+- 📚 [Documentation](/docs)
+- 💬 [Discord](https://discord.gg/syllabi)
+- 🐛 [GitHub Issues](https://github.com/yourorg/syllabi/issues)
+
+**Professional support** (paid):
+- Priority email support
+- Video calls
+- Custom development
+- Contact: enterprise@syllabi.io
+
+### Is there a community?
+
+Yes! Join our community:
+- 💬 [Discord](https://discord.gg/syllabi) - Chat, help, discussions
+- 🐙 [GitHub](https://github.com/yourorg/syllabi) - Code, issues, PRs
+- 𝕏 [@syllabi](https://twitter.com/syllabi) - Updates, tips
+
+### How do I stay updated?
+
+**Release notes**: [GitHub Releases](https://github.com/yourorg/syllabi/releases)
+**Changelog**: CHANGELOG.md in repository
+**Twitter**: [@syllabi](https://twitter.com/syllabi)
+**Discord**: Announcements channel
+
+### Where can I see examples?
+
+**Demo**: [demo.syllabi.io](https://demo.syllabi.io)
+**Example use cases**:
+- Customer support bot
+- Documentation assistant
+- Educational tutor
+- Internal knowledge base
+
+**Showcase**: Submit your chatbot to be featured!
+
+## Next Steps
+
+- [Getting Started](/docs/getting-started) - Build your first chatbot
+- [Local Setup](/docs/getting-started/local-setup) - Set up development environment
+- [Deployment](/docs/deployment) - Deploy to production
+- [Common Errors](/docs/troubleshooting/common-errors) - Troubleshooting guide
+
+---
+
+**Still have questions?** Join our [Discord](https://discord.gg/syllabi) or open a [GitHub Issue](https://github.com/yourorg/syllabi/issues).

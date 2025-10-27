@@ -1,0 +1,632 @@
+# Chat API
+
+Programmatic access to Syllabi chat functionality via REST API.
+
+## Authentication
+
+All API requests require authentication via API key.
+
+### Get API Key
+
+1. Dashboard → **Settings** → **API Keys**
+2. Click **Generate New Key**
+3. Copy and store securely
+4. **Never commit to version control**
+
+### Authorization Header
+
+Include in all requests:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+## Base URL
+
+```
+https://your-app.com/api
+```
+
+## Chat Endpoints
+
+### Send Message
+
+Send a message to a chatbot and get a response.
+
+#### Endpoint
+
+```
+POST /api/chat
+```
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/chat \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "uuid",
+    "message": "What is your refund policy?",
+    "session_id": "optional-session-uuid",
+    "stream": false
+  }'
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `chatbot_id` | string (UUID) | Yes | ID of the chatbot |
+| `message` | string | Yes | User message text |
+| `session_id` | string (UUID) | No | Conversation session ID (creates new if omitted) |
+| `stream` | boolean | No | Enable streaming response (default: false) |
+| `user_id` | string | No | User identifier for tracking |
+| `metadata` | object | No | Custom metadata |
+
+#### Response
+
+**Success (200 OK)**:
+
+```json
+{
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message_id": "660e8400-e29b-41d4-a716-446655440000",
+  "response": "Our refund policy allows returns within 30 days of purchase...",
+  "sources": [
+    {
+      "file_name": "refund-policy.pdf",
+      "page_number": 2,
+      "chunk_text": "...relevant excerpt...",
+      "similarity": 0.87
+    }
+  ],
+  "metadata": {
+    "model": "gpt-4o-mini",
+    "tokens": {
+      "prompt": 245,
+      "completion": 89,
+      "total": 334
+    },
+    "finish_reason": "stop"
+  }
+}
+```
+
+**Error Responses**:
+
+```json
+// 400 Bad Request
+{
+  "error": "invalid_request",
+  "message": "chatbot_id is required"
+}
+
+// 401 Unauthorized
+{
+  "error": "unauthorized",
+  "message": "Invalid API key"
+}
+
+// 404 Not Found
+{
+  "error": "not_found",
+  "message": "Chatbot not found"
+}
+
+// 429 Too Many Requests
+{
+  "error": "rate_limit_exceeded",
+  "message": "Rate limit exceeded. Try again in 60 seconds.",
+  "retry_after": 60
+}
+
+// 500 Internal Server Error
+{
+  "error": "internal_error",
+  "message": "An unexpected error occurred"
+}
+```
+
+### Streaming Response
+
+For token-by-token streaming:
+
+#### Request
+
+```bash
+curl -X POST https://your-app.com/api/chat \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "uuid",
+    "message": "Explain quantum computing",
+    "stream": true
+  }'
+```
+
+#### Response (Server-Sent Events)
+
+```
+data: {"type":"start","session_id":"uuid"}
+
+data: {"type":"token","content":"Quantum"}
+
+data: {"type":"token","content":" computing"}
+
+data: {"type":"token","content":" uses"}
+
+data: {"type":"tool_call","tool":"getRelevantDocuments","input":{...}}
+
+data: {"type":"tool_result","tool":"getRelevantDocuments","output":{...}}
+
+data: {"type":"done","message_id":"uuid","sources":[...]}
+```
+
+#### Client Implementation
+
+**JavaScript (fetch)**:
+
+```javascript
+const response = await fetch('https://your-app.com/api/chat', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    chatbot_id: 'your-chatbot-id',
+    message: 'Your question',
+    stream: true,
+  }),
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\n');
+
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = JSON.parse(line.slice(6));
+
+      if (data.type === 'token') {
+        process.stdout.write(data.content);
+      } else if (data.type === 'done') {
+        console.log('\n\nSources:', data.sources);
+      }
+    }
+  }
+}
+```
+
+**Python**:
+
+```python
+import requests
+import json
+
+response = requests.post(
+    'https://your-app.com/api/chat',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'chatbot_id': 'your-chatbot-id',
+        'message': 'Your question',
+        'stream': True,
+    },
+    stream=True
+)
+
+for line in response.iter_lines():
+    if line.startswith(b'data: '):
+        data = json.loads(line[6:])
+
+        if data['type'] == 'token':
+            print(data['content'], end='', flush=True)
+        elif data['type'] == 'done':
+            print('\n\nSources:', data['sources'])
+```
+
+### Get Session History
+
+Retrieve conversation history.
+
+#### Endpoint
+
+```
+GET /api/sessions/{session_id}
+```
+
+#### Request
+
+```bash
+curl -X GET https://your-app.com/api/sessions/SESSION_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "chatbot_id": "660e8400-e29b-41d4-a716-446655440000",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:35:00Z",
+  "messages": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440000",
+      "role": "user",
+      "content": "What is your refund policy?",
+      "created_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "880e8400-e29b-41d4-a716-446655440000",
+      "role": "assistant",
+      "content": "Our refund policy allows...",
+      "sources": [...],
+      "created_at": "2024-01-15T10:30:05Z"
+    }
+  ],
+  "metadata": {
+    "total_messages": 2,
+    "total_tokens": 450
+  }
+}
+```
+
+### List Sessions
+
+Get all sessions for a chatbot.
+
+#### Endpoint
+
+```
+GET /api/chatbots/{chatbot_id}/sessions
+```
+
+#### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Number of sessions to return (default: 50, max: 100) |
+| `offset` | integer | Pagination offset (default: 0) |
+| `user_id` | string | Filter by user ID |
+| `from` | ISO 8601 date | Sessions created after this date |
+| `to` | ISO 8601 date | Sessions created before this date |
+
+#### Request
+
+```bash
+curl -X GET "https://your-app.com/api/chatbots/CHATBOT_ID/sessions?limit=10&offset=0" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "sessions": [
+    {
+      "session_id": "uuid",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:35:00Z",
+      "message_count": 5,
+      "user_id": "user-123"
+    },
+    // ... more sessions
+  ],
+  "pagination": {
+    "total": 234,
+    "limit": 10,
+    "offset": 0,
+    "has_more": true
+  }
+}
+```
+
+### Delete Session
+
+Delete a conversation session.
+
+#### Endpoint
+
+```
+DELETE /api/sessions/{session_id}
+```
+
+#### Request
+
+```bash
+curl -X DELETE https://your-app.com/api/sessions/SESSION_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Session deleted successfully"
+}
+```
+
+## Rate Limiting
+
+API requests are rate limited per API key:
+
+| Tier | Requests per Minute | Requests per Day |
+|------|---------------------|------------------|
+| Free | 20 | 1,000 |
+| Pro | 100 | 10,000 |
+| Enterprise | Custom | Custom |
+
+### Rate Limit Headers
+
+Responses include rate limit information:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 85
+X-RateLimit-Reset: 1642254600
+```
+
+### Handling Rate Limits
+
+**Exponential backoff**:
+
+```javascript
+async function sendMessageWithRetry(data, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch('https://your-app.com/api/chat', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer YOUR_API_KEY',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+}
+```
+
+## Error Handling
+
+### Error Response Format
+
+```json
+{
+  "error": "error_code",
+  "message": "Human-readable error message",
+  "details": {
+    "field": "Additional context"
+  },
+  "request_id": "req_abc123"
+}
+```
+
+### Common Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `invalid_request` | 400 | Missing or invalid parameters |
+| `unauthorized` | 401 | Invalid or missing API key |
+| `forbidden` | 403 | Access denied |
+| `not_found` | 404 | Resource not found |
+| `rate_limit_exceeded` | 429 | Too many requests |
+| `internal_error` | 500 | Server error |
+| `service_unavailable` | 503 | Service temporarily unavailable |
+
+## SDKs and Libraries
+
+### Official SDKs
+
+**JavaScript/TypeScript**:
+```bash
+npm install @syllabi/sdk
+```
+
+```javascript
+import { SyllabiClient } from '@syllabi/sdk';
+
+const client = new SyllabiClient({
+  apiKey: 'YOUR_API_KEY',
+  baseUrl: 'https://your-app.com',
+});
+
+const response = await client.chat.send({
+  chatbotId: 'your-chatbot-id',
+  message: 'Your question',
+});
+
+console.log(response.response);
+```
+
+**Python**:
+```bash
+pip install syllabi-sdk
+```
+
+```python
+from syllabi import SyllabiClient
+
+client = SyllabiClient(
+    api_key='YOUR_API_KEY',
+    base_url='https://your-app.com'
+)
+
+response = client.chat.send(
+    chatbot_id='your-chatbot-id',
+    message='Your question'
+)
+
+print(response.response)
+```
+
+## Best Practices
+
+### Security
+
+✅ **Do**:
+- Store API keys in environment variables
+- Use HTTPS for all requests
+- Rotate API keys regularly
+- Implement rate limiting on your side
+- Validate API responses
+
+❌ **Don't**:
+- Hardcode API keys in code
+- Share API keys publicly
+- Use API keys in client-side code
+- Skip error handling
+- Ignore rate limit headers
+
+### Performance
+
+✅ **Do**:
+- Use streaming for long responses
+- Cache responses when appropriate
+- Reuse session IDs for conversations
+- Implement timeouts
+- Handle retries with exponential backoff
+
+❌ **Don't**:
+- Create new session for every message
+- Ignore streaming when UI supports it
+- Skip pagination for large datasets
+- Make synchronous blocking requests
+
+### Error Handling
+
+```javascript
+try {
+  const response = await fetch('https://your-app.com/api/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout(30000), // 30 second timeout
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+
+  const result = await response.json();
+  return result;
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.error('Request timed out');
+  } else {
+    console.error('Request failed:', error.message);
+  }
+  throw error;
+}
+```
+
+## Examples
+
+### Building a Custom Chat Interface
+
+```javascript
+class ChatInterface {
+  constructor(chatbotId, apiKey) {
+    this.chatbotId = chatbotId;
+    this.apiKey = apiKey;
+    this.sessionId = null;
+  }
+
+  async sendMessage(message) {
+    const response = await fetch('https://your-app.com/api/chat', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatbot_id: this.chatbotId,
+        message: message,
+        session_id: this.sessionId,
+        stream: true,
+      }),
+    });
+
+    if (!this.sessionId && response.ok) {
+      // Extract session ID from first chunk
+      // ... implementation
+    }
+
+    return this.handleStreamingResponse(response);
+  }
+
+  async handleStreamingResponse(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.slice(6));
+
+          if (data.type === 'token') {
+            fullResponse += data.content;
+            this.onToken(data.content);
+          } else if (data.type === 'done') {
+            this.onComplete(fullResponse, data.sources);
+          }
+        }
+      }
+    }
+
+    return fullResponse;
+  }
+
+  onToken(token) {
+    // Update UI with new token
+  }
+
+  onComplete(fullResponse, sources) {
+    // Show sources, enable input, etc.
+  }
+}
+```
+
+## Webhooks
+
+For real-time notifications, see [Webhooks](/docs/api-reference/webhooks).
+
+## Next Steps
+
+- [Document API](/docs/api-reference/document-api) - Manage documents programmatically
+- [Webhooks](/docs/api-reference/webhooks) - Real-time event notifications
+- [Troubleshooting](/docs/troubleshooting/common-errors) - Common API issues

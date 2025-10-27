@@ -1,0 +1,291 @@
+# Quick Deployment
+
+Deploy Syllabi to production in under 10 minutes using Vercel and Supabase.
+
+## Overview
+
+This guide covers:
+- ✅ Deploying frontend to Vercel
+- ✅ Setting up production database
+- ✅ Configuring environment variables
+- ✅ Custom domain setup (optional)
+
+> **Note**: This guide deploys the frontend only. The backend is optional and covered in [Backend Deployment](/docs/deployment/railway-backend).
+
+## Step 1: Prepare Your Repository
+
+### Fork or Clone
+1. Fork the repository on GitHub, or
+2. Push your cloned repo to your GitHub account
+
+```bash
+# If you cloned locally, push to your repo:
+cd syllabi
+git remote set-url origin https://github.com/YOUR_USERNAME/syllabi.git
+git push -u origin main
+```
+
+## Step 2: Setup Production Database
+
+### Create Production Supabase Project
+
+1. Go to [supabase.com](https://supabase.com/dashboard)
+2. Click "New Project"
+3. Configure:
+   - **Name**: syllabi-prod
+   - **Database Password**: Generate a strong password
+   - **Region**: Choose closest to your users
+4. Wait for project to initialize (~2 minutes)
+
+### Run Database Migrations
+
+1. Go to **SQL Editor** in Supabase Dashboard
+2. Run each migration file from `frontend/supabase/migrations/`
+3. Or use Supabase CLI:
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login
+supabase login
+
+# Link to your project
+supabase link --project-ref your-project-ref
+
+# Push migrations
+supabase db push
+```
+
+### Setup Storage Buckets
+
+1. Go to **Storage** in Supabase Dashboard
+2. Create two buckets:
+   - `chat-files` (Public)
+   - `chatbot-assets` (Public)
+3. Set policies to allow authenticated uploads
+
+### Enable Authentication Providers
+
+1. Go to **Authentication** → **Providers**
+2. Enable **Email** (required)
+3. Optional: Enable **Google**, **GitHub**, etc.
+4. Configure redirect URLs:
+   - Development: `http://localhost:3000/auth/callback`
+   - Production: `https://your-domain.com/auth/callback`
+
+## Step 3: Deploy to Vercel
+
+### Connect GitHub Repository
+
+1. Go to [vercel.com](https://vercel.com)
+2. Click **"Add New Project"**
+3. **Import** your GitHub repository
+4. Configure project:
+   - **Framework Preset**: Next.js
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build` (auto-detected)
+   - **Output Directory**: `.next` (auto-detected)
+
+### Configure Environment Variables
+
+Click **"Environment Variables"** and add:
+
+#### Required Variables
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# OpenAI
+OPENAI_API_KEY=sk-your_key_here
+
+# App URL (update after deployment)
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+```
+
+#### Optional Variables
+
+```bash
+# Analytics
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_key
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+
+# Discord Integration
+DISCORD_CLIENT_ID=your_client_id
+DISCORD_CLIENT_SECRET=your_secret
+DISCORD_PUBLIC_KEY=your_public_key
+DISCORD_BOT_TOKEN=your_bot_token
+
+# Slack Integration
+SLACK_CLIENT_ID=your_client_id
+SLACK_CLIENT_SECRET=your_secret
+SLACK_SIGNING_SECRET=your_signing_secret
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_secret
+
+# Notion Integration
+NOTION_CLIENT_ID=your_client_id
+NOTION_CLIENT_SECRET=your_secret
+```
+
+> **Tip**: Copy these from your local `.env.local` file
+
+### Deploy!
+
+1. Click **"Deploy"**
+2. Wait 2-3 minutes for build to complete
+3. You'll get a URL like: `https://syllabi-xxx.vercel.app`
+
+## Step 4: Post-Deployment Setup
+
+### Update App URL
+
+1. Go to Vercel → Project Settings → Environment Variables
+2. Update `NEXT_PUBLIC_APP_URL` to your deployed URL
+3. Redeploy to apply changes
+
+### Update Supabase Redirect URLs
+
+1. Go to Supabase → Authentication → URL Configuration
+2. Add your Vercel URL to:
+   - **Site URL**: `https://your-app.vercel.app`
+   - **Redirect URLs**: `https://your-app.vercel.app/auth/callback`
+
+### Test Your Deployment
+
+1. Visit your deployed URL
+2. Sign up for an account
+3. Create a chatbot
+4. Test chat functionality
+5. Upload a document
+6. Verify everything works! 🎉
+
+## Step 5: Custom Domain (Optional)
+
+### Add Custom Domain in Vercel
+
+1. Go to Project Settings → Domains
+2. Add your domain: `app.yourdomain.com`
+3. Follow DNS configuration instructions:
+
+```
+Type: CNAME
+Name: app
+Value: cname.vercel-dns.com
+```
+
+4. Wait for DNS propagation (~5-60 minutes)
+
+### Update Environment Variables
+
+Update `NEXT_PUBLIC_APP_URL`:
+```bash
+NEXT_PUBLIC_APP_URL=https://app.yourdomain.com
+```
+
+### Update Supabase URLs
+
+Add custom domain to Supabase redirect URLs.
+
+## Production Checklist
+
+Before going live, verify:
+
+- [ ] All environment variables are set
+- [ ] Database migrations have run successfully
+- [ ] RLS policies are enabled
+- [ ] Storage buckets are configured
+- [ ] Authentication providers are setup
+- [ ] Custom domain is configured (if using)
+- [ ] SSL certificate is active (Vercel provides free)
+- [ ] Test user signup/login
+- [ ] Test chatbot creation
+- [ ] Test document upload
+- [ ] Test chat functionality
+- [ ] Verify streaming works
+- [ ] Check analytics tracking (if enabled)
+
+## Monitoring & Maintenance
+
+### Vercel Analytics
+- Enable in Project Settings → Analytics
+- Monitor performance and errors
+
+### Supabase Monitoring
+- Check Database Usage
+- Monitor API requests
+- Review Authentication logs
+
+### Updating Your Deployment
+
+```bash
+# Make changes locally
+git add .
+git commit -m "Your changes"
+git push
+
+# Vercel automatically deploys!
+```
+
+## Cost Estimate
+
+### Free Tier (Perfect for Testing)
+- **Vercel**: Free for personal projects
+- **Supabase**: Free tier (500MB database, 1GB file storage)
+- **OpenAI**: Pay per use (~$0.15 per 1M tokens for GPT-4o-mini)
+
+**Expected costs for moderate use**: $10-50/month
+
+### Production Scale
+- **Vercel Pro**: $20/month (better performance)
+- **Supabase Pro**: $25/month (8GB database, 100GB storage)
+- **OpenAI**: Scales with usage
+
+## Troubleshooting
+
+### Build Failed
+- Check build logs in Vercel
+- Verify Node.js version (should be 20+)
+- Ensure all dependencies are in `package.json`
+
+### Environment Variable Errors
+- Verify all required vars are set
+- Check for typos in variable names
+- Ensure no trailing spaces
+
+### Database Connection Failed
+- Verify Supabase URL and keys
+- Check if project is paused (free tier inactivity)
+- Ensure network connectivity
+
+### Chat Not Streaming
+- Check OpenAI API key is valid
+- Verify API key has credits
+- Review browser console for errors
+
+## Next Steps
+
+Your app is now live! 🚀
+
+1. **Customize**: Add your branding and themes
+2. **Integrate**: Connect Discord, Slack, or other platforms
+3. **Monitor**: Set up analytics and error tracking
+4. **Scale**: Consider backend deployment for advanced features
+
+## Additional Resources
+
+- [Environment Variables Reference](/docs/deployment/environment-variables)
+- [Deploy Backend to Railway](/docs/deployment/railway-backend)
+- [Monitoring & Analytics](/docs/deployment/monitoring)
+- [Scaling Best Practices](/docs/deployment/scaling)
+
+## Need Help?
+
+- 💬 [GitHub Discussions](https://github.com/YOUR_USERNAME/syllabi/discussions)
+- 🐛 [Report an Issue](https://github.com/YOUR_USERNAME/syllabi/issues)
+- 📖 [Troubleshooting Guide](/docs/troubleshooting)

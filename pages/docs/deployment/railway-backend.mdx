@@ -1,0 +1,717 @@
+# Deploy Backend to Railway
+
+Complete guide to deploying the Syllabi backend (FastAPI + Celery) to Railway.
+
+## Prerequisites
+
+- GitHub account with your Syllabi repository
+- Railway account (free trial available)
+- Redis instance (Railway provides)
+- Backend processing enabled in frontend
+
+## Overview
+
+Railway is recommended for the Python backend:
+
+- ✅ **Simple deployment** from GitHub
+- ✅ **Built-in Redis** for Celery
+- ✅ **Automatic HTTPS**
+- ✅ **Environment variables** management
+- ✅ **Logs and monitoring**
+- ✅ **Reasonable pricing** ($5/month starter)
+
+## When Do You Need the Backend?
+
+The backend is **optional** but required for:
+
+- 📄 **Advanced document processing** - PDF parsing, OCR
+- 🎥 **Video transcription** - YouTube, uploaded videos
+- 🎵 **Audio transcription** - AssemblyAI integration
+- 📊 **Heavy computations** - Large document chunking
+- 🔄 **Background tasks** - Asynchronous processing
+
+If you only need basic text chat and simple RAG, the **frontend-only deployment** is sufficient.
+
+## Architecture
+
+```
+Railway Project
+├── Backend Service (FastAPI)
+│   ├── API endpoints (:8000)
+│   └── Document processing
+├── Worker Service (Celery)
+│   ├── Background tasks
+│   └── Heavy processing
+└── Redis (Message Broker)
+    └── Task queue
+```
+
+## Step 1: Prepare Backend Code
+
+### 1.1 Create Dockerfile
+
+Create `backend/Dockerfile`:
+
+```dockerfile
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### 1.2 Create Worker Dockerfile
+
+Create `backend/Dockerfile.worker`:
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Run Celery worker
+CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
+```
+
+### 1.3 Update Dependencies
+
+Ensure `backend/requirements.txt` includes:
+
+```txt
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Background Tasks
+celery==5.3.4
+redis==5.0.1
+
+# Database
+supabase==2.3.0
+asyncpg==0.29.0
+
+# Document Processing
+pypdf2==3.0.1
+python-docx==1.1.0
+pillow==10.2.0
+
+# AI/ML
+openai==1.12.0
+anthropic==0.18.1
+
+# Video/Audio
+assemblyai==0.17.0
+yt-dlp==2024.1.1
+
+# Utilities
+python-dotenv==1.0.0
+httpx==0.26.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+```
+
+## Step 2: Create Railway Project
+
+### 2.1 Sign Up for Railway
+
+1. Go to [railway.app](https://railway.app)
+2. Sign up with GitHub
+3. Get $5 free trial credit
+
+### 2.2 Create New Project
+
+1. Click **New Project**
+2. Select **Deploy from GitHub repo**
+3. Connect your GitHub account
+4. Select `syllabi` repository
+
+### 2.3 Add Redis Service
+
+1. In project dashboard, click **New**
+2. Select **Database** → **Redis**
+3. Redis instance will be provisioned automatically
+4. Note the `REDIS_URL` variable (auto-configured)
+
+## Step 3: Deploy Backend API Service
+
+### 3.1 Add Service
+
+1. Click **New** → **GitHub Repo**
+2. Select your repository
+3. Name: `syllabi-backend`
+
+### 3.2 Configure Build
+
+**Root Directory**: `backend`
+
+**Dockerfile Path**: `Dockerfile`
+
+**Build Command**: (automatically detected)
+```bash
+docker build -f Dockerfile .
+```
+
+### 3.3 Set Environment Variables
+
+Click on the service → **Variables** tab:
+
+#### Required Variables
+
+```bash
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-...
+
+# Redis (auto-configured by Railway)
+REDIS_URL=${{Redis.REDIS_URL}}
+
+# API Security
+BACKEND_API_KEY=your-secret-key-here
+
+# App Config
+ENVIRONMENT=production
+```
+
+#### Optional Variables
+
+```bash
+# Additional AI providers
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+
+# Transcription
+ASSEMBLY_AI_API_KEY=...
+
+# YouTube
+YOUTUBE_API_KEY=...
+
+# CORS
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+### 3.4 Configure Networking
+
+1. Go to **Settings** → **Networking**
+2. Click **Generate Domain**
+3. Note your API URL: `https://syllabi-backend-production.up.railway.app`
+
+### 3.5 Deploy
+
+Railway automatically deploys on:
+- Git push to main branch
+- Manual trigger in dashboard
+
+First deployment takes ~5-10 minutes.
+
+## Step 4: Deploy Celery Worker Service
+
+### 4.1 Add Worker Service
+
+1. Click **New** → **GitHub Repo**
+2. Select your repository again
+3. Name: `syllabi-worker`
+
+### 4.2 Configure Build
+
+**Root Directory**: `backend`
+
+**Dockerfile Path**: `Dockerfile.worker`
+
+### 4.3 Set Environment Variables
+
+Copy all variables from Backend API service:
+
+```bash
+# Copy from Backend service
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+OPENAI_API_KEY=...
+REDIS_URL=${{Redis.REDIS_URL}}
+BACKEND_API_KEY=...
+ASSEMBLY_AI_API_KEY=...
+```
+
+**Important**: Use the same `REDIS_URL` reference to connect to shared Redis instance.
+
+### 4.4 Deploy Worker
+
+Worker service automatically starts processing tasks from the queue.
+
+## Step 5: Connect Frontend to Backend
+
+### 5.1 Update Vercel Environment Variables
+
+Add to your Vercel frontend project:
+
+```bash
+NEXT_PUBLIC_BACKEND_URL=https://syllabi-backend-production.up.railway.app
+BACKEND_API_KEY=your-secret-key-here
+```
+
+### 5.2 Test Backend Connection
+
+In your frontend, API routes should now call backend:
+
+```typescript
+// src/app/api/documents/process/route.ts
+export async function POST(req: Request) {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+  const apiKey = process.env.BACKEND_API_KEY
+
+  const response = await fetch(`${backendUrl}/api/v1/documents/process`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: JSON.stringify(data),
+  })
+
+  return response
+}
+```
+
+## Step 6: Verify Deployment
+
+### 6.1 Check Service Health
+
+Test the backend API:
+
+```bash
+# Health check
+curl https://syllabi-backend-production.up.railway.app/health
+
+# Expected response
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "services": {
+    "redis": "connected",
+    "database": "connected"
+  }
+}
+```
+
+### 6.2 Check Worker Logs
+
+1. Go to Railway dashboard
+2. Click on **syllabi-worker**
+3. View **Logs** tab
+4. Should see:
+   ```
+   [INFO] celery@worker ready.
+   [INFO] Connected to redis://...
+   ```
+
+### 6.3 Test Document Processing
+
+1. Upload a PDF in your frontend
+2. Check backend logs for processing
+3. Check worker logs for task execution
+4. Verify document chunks in database
+
+### 6.4 Monitor Task Queue
+
+Check Redis for queued tasks:
+
+```bash
+# In Railway Redis service → Deploy logs
+redis-cli
+> LLEN celery
+(integer) 0  # No pending tasks
+
+> KEYS *
+# Should show celery task keys
+```
+
+## Advanced Configuration
+
+### Scaling Workers
+
+Add more worker instances for heavy load:
+
+1. Duplicate the worker service
+2. Name: `syllabi-worker-2`
+3. Both workers share the same Redis queue
+4. Tasks distributed automatically
+
+### Health Checks
+
+Add health check endpoint:
+
+```python
+# backend/app/api/routes/health.py
+from fastapi import APIRouter
+import redis
+import asyncpg
+
+router = APIRouter()
+
+@router.get("/health")
+async def health_check():
+    health = {
+        "status": "healthy",
+        "services": {}
+    }
+
+    # Check Redis
+    try:
+        r = redis.from_url(settings.REDIS_URL)
+        r.ping()
+        health["services"]["redis"] = "connected"
+    except Exception as e:
+        health["services"]["redis"] = "disconnected"
+        health["status"] = "unhealthy"
+
+    # Check Database
+    try:
+        conn = await asyncpg.connect(settings.SUPABASE_URL)
+        await conn.close()
+        health["services"]["database"] = "connected"
+    except Exception as e:
+        health["services"]["database"] = "disconnected"
+        health["status"] = "unhealthy"
+
+    return health
+```
+
+Configure Railway to use health check:
+
+1. **Settings** → **Health Check**
+2. Path: `/health`
+3. Timeout: 30 seconds
+
+### Resource Limits
+
+Adjust resources for performance:
+
+**Backend API**:
+- Memory: 512 MB - 1 GB
+- CPU: Shared (default)
+
+**Worker**:
+- Memory: 1 GB - 2 GB (for heavy processing)
+- CPU: Shared
+
+Configure in **Settings** → **Resources**.
+
+### Logging
+
+Centralize logs with Railway integrations:
+
+1. **Settings** → **Integrations**
+2. Add logging service (Axiom, Datadog, etc.)
+3. All logs automatically streamed
+
+Or use Railway's built-in logs:
+- Last 10,000 lines stored
+- Real-time streaming
+- Search and filter
+
+### Monitoring
+
+Monitor task execution:
+
+```python
+# backend/app/workers/celery_app.py
+from celery.signals import task_prerun, task_postrun, task_failure
+
+@task_prerun.connect
+def task_prerun_handler(task_id, task, *args, **kwargs):
+    print(f"Task {task.name}[{task_id}] starting")
+
+@task_postrun.connect
+def task_postrun_handler(task_id, task, *args, **kwargs):
+    print(f"Task {task.name}[{task_id}] completed")
+
+@task_failure.connect
+def task_failure_handler(task_id, exception, *args, **kwargs):
+    print(f"Task {task_id} failed: {exception}")
+```
+
+### Retries and Error Handling
+
+Configure task retries:
+
+```python
+# backend/app/workers/tasks.py
+from celery import Task
+
+class RetryTask(Task):
+    autoretry_for = (Exception,)
+    retry_kwargs = {'max_retries': 3}
+    retry_backoff = True
+
+@celery_app.task(base=RetryTask)
+async def process_document(document_id: str):
+    # Will auto-retry 3 times with exponential backoff
+    ...
+```
+
+## Troubleshooting
+
+### Worker Not Processing Tasks
+
+**Check Redis connection**:
+
+```python
+# Test in worker logs
+import redis
+r = redis.from_url(os.getenv("REDIS_URL"))
+r.ping()  # Should return True
+```
+
+**Check queue name**:
+- Ensure backend and worker use same queue name
+- Default: `celery`
+
+**Restart worker**:
+- Railway dashboard → Worker service → Restart
+
+### Backend API Timeouts
+
+**Issue**: Requests timeout after 30 seconds
+
+**Solution 1**: Move heavy work to Celery
+```python
+# Instead of processing synchronously
+result = await process_document(file)
+
+# Queue as background task
+task = process_document.delay(file_id)
+return {"task_id": task.id}
+```
+
+**Solution 2**: Increase timeout (Railway Pro)
+- Settings → Request Timeout: 300 seconds
+
+### Out of Memory
+
+**Issue**: Worker crashes with OOM error
+
+**Solutions**:
+1. Increase worker memory limit
+2. Process documents in smaller chunks
+3. Add pagination to bulk operations
+4. Clear memory after heavy tasks:
+
+```python
+import gc
+
+@celery_app.task
+async def process_large_document(doc_id: str):
+    # Process document
+    result = await heavy_processing(doc_id)
+
+    # Clear memory
+    gc.collect()
+
+    return result
+```
+
+### Redis Connection Issues
+
+**Issue**: `ConnectionError: Connection refused`
+
+**Solution**: Verify Redis URL format
+```bash
+# Correct format
+redis://default:password@redis.railway.internal:6379
+
+# Railway provides this automatically
+REDIS_URL=${{Redis.REDIS_URL}}
+```
+
+### CORS Errors
+
+**Issue**: Frontend can't call backend API
+
+**Solution**: Configure CORS in FastAPI:
+
+```python
+# backend/app/main.py
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://your-frontend.vercel.app",
+        "http://localhost:3000",  # For development
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## Cost Optimization
+
+### Railway Pricing
+
+**Starter Plan**: $5/month
+- 512 MB RAM
+- Shared CPU
+- 100 GB bandwidth
+- Enough for small-medium projects
+
+**Usage-Based Pricing**:
+- $0.000231 per GB-second (RAM)
+- $0.00001 per vCPU-second
+
+### Typical Costs
+
+**Small project** (1000 users/month):
+- Backend API: ~$3/month
+- Worker: ~$2/month
+- Redis: Included
+- **Total**: ~$5/month
+
+**Medium project** (10k users/month):
+- Backend API: ~$8/month
+- Worker (2 instances): ~$6/month
+- Redis: Included
+- **Total**: ~$14/month
+
+### Cost Reduction Tips
+
+1. **Sleep unused services** - Railway can sleep inactive services
+2. **Optimize worker usage** - Only run when needed
+3. **Batch operations** - Process multiple documents together
+4. **Cache results** - Reduce redundant processing
+5. **Compress responses** - Reduce bandwidth usage
+
+## Security Best Practices
+
+### 1. Secure API Endpoints
+
+Require API key for all requests:
+
+```python
+# backend/app/api/dependencies.py
+from fastapi import HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+async def verify_api_key(
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    if credentials.credentials != settings.BACKEND_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    return credentials.credentials
+```
+
+```python
+# Apply to routes
+@router.post("/process")
+async def process_document(
+    api_key: str = Depends(verify_api_key)
+):
+    ...
+```
+
+### 2. Validate Input
+
+Use Pydantic models:
+
+```python
+from pydantic import BaseModel, HttpUrl
+
+class DocumentProcessRequest(BaseModel):
+    url: HttpUrl
+    chatbot_id: str
+    file_type: Literal["pdf", "docx", "txt"]
+
+@router.post("/process")
+async def process_document(request: DocumentProcessRequest):
+    # Input validated automatically
+    ...
+```
+
+### 3. Rate Limiting
+
+Implement rate limiting:
+
+```bash
+pip install slowapi
+```
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@app.post("/process")
+@limiter.limit("10/minute")
+async def process_document():
+    ...
+```
+
+### 4. Secrets Management
+
+- ✅ Store all secrets in Railway environment variables
+- ✅ Never commit secrets to Git
+- ✅ Use different keys for dev/staging/prod
+- ✅ Rotate keys periodically
+
+## Next Steps
+
+- [Docker Compose Deployment](/docs/deployment/docker-compose)
+- [Environment Variables Reference](/docs/deployment/environment-variables)
+- [Backend Architecture](/docs/development/backend-architecture)
+- [Troubleshooting](/docs/troubleshooting/common-errors)
+
+## Production Checklist
+
+- [ ] Backend and worker services deployed
+- [ ] Redis instance connected
+- [ ] All environment variables configured
+- [ ] Health check endpoint working
+- [ ] Frontend connected to backend
+- [ ] CORS configured properly
+- [ ] API key authentication enabled
+- [ ] Rate limiting implemented
+- [ ] Logging and monitoring set up
+- [ ] Error tracking configured (Sentry)
+- [ ] Document processing tested end-to-end
+- [ ] Worker scaling configured for load
+- [ ] Backup strategy for Redis data
+- [ ] Security review completed

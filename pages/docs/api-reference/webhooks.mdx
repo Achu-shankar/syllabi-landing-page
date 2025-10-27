@@ -1,0 +1,661 @@
+# Webhooks
+
+Receive real-time notifications when events occur in your Syllabi chatbot.
+
+## Overview
+
+Webhooks allow your application to:
+- Get notified when documents finish processing
+- Track new conversations
+- Monitor message exchanges
+- Sync data to external systems
+- Trigger custom workflows
+
+## Setting Up Webhooks
+
+### Create Webhook
+
+1. Dashboard → **Settings** → **Webhooks**
+2. Click **Add Webhook**
+3. Configure:
+   - **URL**: Your endpoint (HTTPS required)
+   - **Events**: Select events to receive
+   - **Secret**: Webhook signing secret (auto-generated)
+4. Click **Create**
+
+### Webhook Configuration
+
+```json
+{
+  "webhook_id": "bb0e8400-e29b-41d4-a716-446655440000",
+  "url": "https://your-server.com/webhooks/syllabi",
+  "events": [
+    "message.created",
+    "document.completed",
+    "session.ended"
+  ],
+  "secret": "whsec_abc123...",
+  "active": true,
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+## Webhook Events
+
+### Message Events
+
+#### `message.created`
+
+Triggered when a new message is sent (user or assistant).
+
+```json
+{
+  "event": "message.created",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "message_id": "uuid",
+    "session_id": "uuid",
+    "chatbot_id": "uuid",
+    "role": "assistant",
+    "content": "Our refund policy allows...",
+    "metadata": {
+      "model": "gpt-4o-mini",
+      "tokens": 89,
+      "finish_reason": "stop"
+    },
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Session Events
+
+#### `session.started`
+
+New conversation session created.
+
+```json
+{
+  "event": "session.started",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "session_id": "uuid",
+    "chatbot_id": "uuid",
+    "user_id": "user-123",
+    "source": "web",
+    "metadata": {},
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### `session.ended`
+
+Conversation session concluded.
+
+```json
+{
+  "event": "session.ended",
+  "timestamp": "2024-01-15T10:45:00Z",
+  "data": {
+    "session_id": "uuid",
+    "chatbot_id": "uuid",
+    "message_count": 8,
+    "duration_seconds": 900,
+    "user_rating": 5,
+    "ended_at": "2024-01-15T10:45:00Z"
+  }
+}
+```
+
+### Document Events
+
+#### `document.uploaded`
+
+Document uploaded, processing started.
+
+```json
+{
+  "event": "document.uploaded",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "document_id": "uuid",
+    "chatbot_id": "uuid",
+    "file_name": "product-manual.pdf",
+    "file_type": "document",
+    "file_size": 2457600,
+    "uploaded_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### `document.completed`
+
+Document processing finished successfully.
+
+```json
+{
+  "event": "document.completed",
+  "timestamp": "2024-01-15T10:32:00Z",
+  "data": {
+    "document_id": "uuid",
+    "chatbot_id": "uuid",
+    "file_name": "product-manual.pdf",
+    "chunk_count": 387,
+    "processing_time_seconds": 120,
+    "indexed_at": "2024-01-15T10:32:00Z"
+  }
+}
+```
+
+#### `document.failed`
+
+Document processing failed.
+
+```json
+{
+  "event": "document.failed",
+  "timestamp": "2024-01-15T10:32:00Z",
+  "data": {
+    "document_id": "uuid",
+    "chatbot_id": "uuid",
+    "file_name": "corrupted-file.pdf",
+    "error": "Failed to parse PDF: Invalid file format",
+    "failed_at": "2024-01-15T10:32:00Z"
+  }
+}
+```
+
+### User Feedback Events
+
+#### `feedback.received`
+
+User provided feedback rating.
+
+```json
+{
+  "event": "feedback.received",
+  "timestamp": "2024-01-15T10:45:00Z",
+  "data": {
+    "session_id": "uuid",
+    "chatbot_id": "uuid",
+    "rating": 5,
+    "comment": "Very helpful, thanks!",
+    "created_at": "2024-01-15T10:45:00Z"
+  }
+}
+```
+
+## Receiving Webhooks
+
+### Endpoint Requirements
+
+Your webhook endpoint must:
+- ✅ Accept POST requests
+- ✅ Use HTTPS (HTTP not allowed)
+- ✅ Respond with 200 status code within 10 seconds
+- ✅ Be publicly accessible
+- ✅ Verify webhook signatures (recommended)
+
+### Example Endpoint (Node.js/Express)
+
+```javascript
+const express = require('express');
+const crypto = require('crypto');
+
+const app = express();
+app.use(express.json());
+
+app.post('/webhooks/syllabi', (req, res) => {
+  // 1. Verify signature
+  const signature = req.headers['x-syllabi-signature'];
+  const isValid = verifySignature(req.body, signature, WEBHOOK_SECRET);
+
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  // 2. Process event
+  const { event, data } = req.body;
+
+  switch (event) {
+    case 'message.created':
+      handleMessageCreated(data);
+      break;
+
+    case 'document.completed':
+      handleDocumentCompleted(data);
+      break;
+
+    case 'session.ended':
+      handleSessionEnded(data);
+      break;
+
+    default:
+      console.log(`Unknown event: ${event}`);
+  }
+
+  // 3. Respond quickly
+  res.status(200).send('OK');
+});
+
+function verifySignature(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+  return signature === `sha256=${digest}`;
+}
+
+function handleMessageCreated(data) {
+  console.log('New message:', data.content);
+  // Log to database, trigger notification, etc.
+}
+
+function handleDocumentCompleted(data) {
+  console.log(`Document ${data.file_name} processed: ${data.chunk_count} chunks`);
+  // Update UI, send notification, etc.
+}
+
+function handleSessionEnded(data) {
+  console.log(`Session ended: ${data.message_count} messages, rating: ${data.user_rating}`);
+  // Update analytics, send follow-up email, etc.
+}
+
+app.listen(3000);
+```
+
+### Example Endpoint (Python/Flask)
+
+```python
+from flask import Flask, request, jsonify
+import hashlib
+import hmac
+import json
+
+app = Flask(__name__)
+WEBHOOK_SECRET = 'your-webhook-secret'
+
+@app.route('/webhooks/syllabi', methods=['POST'])
+def webhook_handler():
+    # 1. Verify signature
+    signature = request.headers.get('X-Syllabi-Signature')
+
+    if not verify_signature(request.data, signature, WEBHOOK_SECRET):
+        return jsonify({'error': 'Invalid signature'}), 401
+
+    # 2. Process event
+    payload = request.json
+    event = payload['event']
+    data = payload['data']
+
+    if event == 'message.created':
+        handle_message_created(data)
+    elif event == 'document.completed':
+        handle_document_completed(data)
+    elif event == 'session.ended':
+        handle_session_ended(data)
+    else:
+        print(f'Unknown event: {event}')
+
+    # 3. Respond quickly
+    return jsonify({'status': 'received'}), 200
+
+def verify_signature(payload, signature, secret):
+    expected_sig = 'sha256=' + hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, expected_sig)
+
+def handle_message_created(data):
+    print(f"New message: {data['content']}")
+
+def handle_document_completed(data):
+    print(f"Document {data['file_name']} processed: {data['chunk_count']} chunks")
+
+def handle_session_ended(data):
+    print(f"Session ended: {data['message_count']} messages")
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+
+## Signature Verification
+
+Webhooks are signed with HMAC SHA-256 for security.
+
+### Signature Header
+
+```
+X-Syllabi-Signature: sha256=abc123...
+```
+
+### Verification Steps
+
+1. Get webhook secret from dashboard
+2. Compute HMAC-SHA256 of request body
+3. Compare with signature header
+4. Use constant-time comparison to prevent timing attacks
+
+### Verification Code
+
+**JavaScript**:
+```javascript
+const crypto = require('crypto');
+
+function verifySignature(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = 'sha256=' + hmac.update(JSON.stringify(payload)).digest('hex');
+
+  // Constant-time comparison
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(digest)
+  );
+}
+```
+
+**Python**:
+```python
+import hmac
+import hashlib
+
+def verify_signature(payload, signature, secret):
+    expected = 'sha256=' + hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(signature, expected)
+```
+
+## Webhook Headers
+
+Every webhook request includes:
+
+```
+Content-Type: application/json
+X-Syllabi-Signature: sha256=abc123...
+X-Syllabi-Event: message.created
+X-Syllabi-Delivery-ID: uuid
+X-Syllabi-Timestamp: 1642254600
+User-Agent: Syllabi-Webhooks/1.0
+```
+
+## Retry Policy
+
+### Automatic Retries
+
+If your endpoint doesn't respond with 200:
+
+- **Retry 1**: After 5 seconds
+- **Retry 2**: After 30 seconds
+- **Retry 3**: After 5 minutes
+- **Retry 4**: After 30 minutes
+- **Retry 5**: After 2 hours
+
+### Failed Deliveries
+
+After 5 failed attempts:
+- Webhook marked as failed
+- Email notification sent
+- Event stored for manual replay
+
+### Replay Failed Events
+
+1. Dashboard → **Webhooks** → Select webhook
+2. View **Failed Deliveries**
+3. Click **Replay** on individual events
+
+## Testing Webhooks
+
+### Test Event
+
+Send test event from dashboard:
+
+1. **Webhooks** → Select webhook
+2. Click **Send Test Event**
+3. Choose event type
+4. Check your endpoint receives it
+
+### Test Payload
+
+```json
+{
+  "event": "test.event",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "message": "This is a test webhook event"
+  }
+}
+```
+
+### Local Development
+
+Use [ngrok](https://ngrok.com) for local testing:
+
+```bash
+# Start your local server
+node server.js
+
+# Expose with ngrok
+ngrok http 3000
+
+# Use ngrok URL as webhook URL
+https://abc123.ngrok.io/webhooks/syllabi
+```
+
+## Monitoring
+
+### Webhook Dashboard
+
+View delivery status:
+
+| Event | Status | Attempts | Last Attempt | Response Time |
+|-------|--------|----------|--------------|---------------|
+| message.created | ✓ Success | 1 | 2 min ago | 45ms |
+| document.completed | ✓ Success | 1 | 5 min ago | 123ms |
+| message.created | ✗ Failed | 5 | 1 hour ago | Timeout |
+
+### Webhook Logs
+
+Detailed delivery logs:
+
+```json
+{
+  "delivery_id": "uuid",
+  "event": "message.created",
+  "url": "https://your-server.com/webhooks/syllabi",
+  "request": {
+    "headers": {...},
+    "body": {...}
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {...},
+    "body": "OK",
+    "time_ms": 45
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## Best Practices
+
+### Endpoint Design
+
+✅ **Do**:
+- Respond with 200 immediately
+- Process events asynchronously (queue for background processing)
+- Implement idempotency (handle duplicate events)
+- Log all webhook deliveries
+- Verify signatures
+- Handle unknown event types gracefully
+
+❌ **Don't**:
+- Perform heavy processing in webhook handler
+- Wait for external API calls before responding
+- Return error codes for unknown events
+- Skip signature verification
+- Block webhook handler for database writes
+
+### Idempotency
+
+Handle duplicate deliveries:
+
+```javascript
+const processedDeliveries = new Set();
+
+app.post('/webhooks/syllabi', async (req, res) => {
+  const deliveryId = req.headers['x-syllabi-delivery-id'];
+
+  // Check if already processed
+  if (processedDeliveries.has(deliveryId)) {
+    return res.status(200).send('Already processed');
+  }
+
+  // Process event
+  await processEvent(req.body);
+
+  // Mark as processed
+  processedDeliveries.add(deliveryId);
+
+  res.status(200).send('OK');
+});
+```
+
+### Async Processing
+
+Queue events for background processing:
+
+```javascript
+const queue = require('bull');
+const webhookQueue = new queue('webhooks');
+
+app.post('/webhooks/syllabi', (req, res) => {
+  // Verify signature
+  if (!verifySignature(req.body, req.headers['x-syllabi-signature'], secret)) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  // Add to queue
+  webhookQueue.add(req.body);
+
+  // Respond immediately
+  res.status(200).send('Queued');
+});
+
+// Process in background
+webhookQueue.process(async (job) => {
+  const { event, data } = job.data;
+
+  // Heavy processing here
+  await processEvent(event, data);
+});
+```
+
+### Error Handling
+
+```javascript
+app.post('/webhooks/syllabi', async (req, res) => {
+  try {
+    // Verify signature
+    if (!verifySignature(...)) {
+      return res.status(401).send('Invalid signature');
+    }
+
+    // Queue event
+    await webhookQueue.add(req.body);
+
+    res.status(200).send('OK');
+  } catch (error) {
+    // Log error but still respond with 200
+    console.error('Webhook error:', error);
+    res.status(200).send('Error logged');
+  }
+});
+```
+
+## Webhook Security
+
+### Verify Every Request
+
+Always verify signatures - don't rely on origin IP.
+
+### Use HTTPS
+
+Webhooks only sent to HTTPS endpoints (TLS 1.2+).
+
+### Rotate Secrets
+
+Rotate webhook secrets periodically:
+
+1. Generate new secret in dashboard
+2. Update your endpoint with new secret
+3. Delete old secret after transition period
+
+### IP Whitelist (Optional)
+
+Restrict webhook requests to Syllabi IPs:
+
+```
+Webhook IPs (example):
+- 192.0.2.1
+- 192.0.2.2
+```
+
+Check dashboard for current IP ranges.
+
+## Use Cases
+
+### Sync to CRM
+
+```javascript
+async function handleSessionEnded(data) {
+  // Create CRM record from conversation
+  await crm.createInteraction({
+    contact_id: data.user_id,
+    type: 'chat',
+    duration: data.duration_seconds,
+    satisfaction: data.user_rating,
+    transcript_url: `https://app.com/sessions/${data.session_id}`,
+    created_at: data.ended_at
+  });
+}
+```
+
+### Send Notifications
+
+```javascript
+async function handleDocumentCompleted(data) {
+  // Notify user via email
+  await sendEmail({
+    to: user.email,
+    subject: 'Document Processed',
+    body: `Your document "${data.file_name}" has been processed and is ready to use. ${data.chunk_count} chunks were created.`
+  });
+}
+```
+
+### Analytics
+
+```javascript
+async function handleMessageCreated(data) {
+  // Track in analytics
+  await analytics.track({
+    event: 'chatbot_message',
+    chatbot_id: data.chatbot_id,
+    session_id: data.session_id,
+    role: data.role,
+    tokens: data.metadata.tokens,
+    model: data.metadata.model
+  });
+}
+```
+
+## Next Steps
+
+- [Chat API](/docs/api-reference/chat-api) - Send messages programmatically
+- [Document API](/docs/api-reference/document-api) - Manage documents
+- [Troubleshooting](/docs/troubleshooting/common-errors) - Webhook issues

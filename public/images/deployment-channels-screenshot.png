@@ -1,0 +1,9 @@
+<svg width="600" height="450" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="450" fill="#f0fdf4"/>
+  <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="#22c55e">
+    Deployment Channels Screenshot Placeholder
+  </text>
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="14" fill="#4ade80">
+    Add screenshot showing different deployment options
+  </text>
+</svg>

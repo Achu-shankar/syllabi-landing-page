@@ -1,0 +1,579 @@
+# Deploy Frontend to Vercel
+
+Complete guide to deploying the Syllabi frontend to Vercel.
+
+## Prerequisites
+
+- GitHub account with your Syllabi repository
+- Vercel account (free tier available)
+- Supabase project set up
+- OpenAI API key
+
+## Overview
+
+Vercel is the recommended platform for deploying the Next.js frontend:
+
+- ✅ **Zero configuration** for Next.js apps
+- ✅ **Automatic deployments** from Git
+- ✅ **Edge network** for global performance
+- ✅ **Built-in preview deployments** for PRs
+- ✅ **Free SSL certificates**
+- ✅ **Generous free tier**
+
+## Step 1: Prepare Your Repository
+
+### 1.1 Push to GitHub
+
+```bash
+# If not already done
+cd syllabi/frontend
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/syllabi.git
+git push -u origin main
+```
+
+### 1.2 Verify Required Files
+
+Ensure these files exist in your `frontend/` directory:
+
+- ✅ `package.json`
+- ✅ `next.config.mjs`
+- ✅ `.env.example` (for reference)
+- ✅ `.gitignore` (excludes .env.local)
+
+## Step 2: Set Up Supabase Production Database
+
+### 2.1 Create Production Project
+
+1. Go to [supabase.com](https://supabase.com)
+2. Click **New Project**
+3. Choose organization and region (close to your users)
+4. Set a strong database password
+5. Wait for project to initialize (~2 minutes)
+
+### 2.2 Run Migrations
+
+```bash
+# Install Supabase CLI if not already done
+npm install -g supabase
+
+# Link to production project
+cd frontend
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Push all migrations
+supabase db push
+
+# Verify tables were created
+# Go to Supabase Dashboard → Table Editor
+```
+
+### 2.3 Enable Required Extensions
+
+In Supabase Dashboard → **SQL Editor**, run:
+
+```sql
+-- Enable pgvector for embeddings
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Enable UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+### 2.4 Set Up Storage Buckets
+
+In Supabase Dashboard → **Storage**:
+
+1. Create bucket: `chat-files`
+   - Public: ✅ Yes
+   - File size limit: 50 MB
+
+2. Create bucket: `chatbot-assets`
+   - Public: ✅ Yes
+   - File size limit: 10 MB
+
+**Set RLS policies**:
+
+```sql
+-- Allow authenticated users to upload
+CREATE POLICY "Allow authenticated uploads"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'chat-files');
+
+-- Allow public read access
+CREATE POLICY "Allow public read"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'chat-files');
+```
+
+## Step 3: Deploy to Vercel
+
+### 3.1 Import Project
+
+1. Go to [vercel.com](https://vercel.com)
+2. Click **Add New** → **Project**
+3. Import your GitHub repository
+4. Select the `frontend` directory as root
+5. Vercel auto-detects Next.js configuration
+
+### 3.2 Configure Build Settings
+
+If using monorepo structure:
+
+**Root Directory**: `frontend`
+
+**Framework Preset**: Next.js
+
+**Build Command**:
+```bash
+npm run build
+```
+
+**Output Directory**:
+```
+.next
+```
+
+**Install Command**:
+```bash
+npm install
+```
+
+### 3.3 Add Environment Variables
+
+In Vercel dashboard → **Settings** → **Environment Variables**, add:
+
+#### Required Variables
+
+| Variable | Value | Where to find |
+|----------|-------|---------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` | Supabase Dashboard → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbG...` | Supabase Dashboard → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbG...` | Supabase Dashboard → Settings → API (⚠️ Keep secret!) |
+| `OPENAI_API_KEY` | `sk-proj-...` | OpenAI Platform → API Keys |
+| `NEXT_PUBLIC_APP_URL` | `https://yourdomain.com` | Your custom domain or Vercel URL |
+
+#### Optional Variables (Backend Integration)
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `NEXT_PUBLIC_BACKEND_URL` | `https://your-backend.railway.app` | Backend API URL |
+| `BACKEND_API_KEY` | `your-secret-key` | Shared secret for backend auth |
+
+#### Optional Variables (Features)
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | For Claude models |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | `...` | For Gemini models |
+| `ASSEMBLY_AI_API_KEY` | `...` | For audio transcription |
+| `YOUTUBE_API_KEY` | `...` | For YouTube metadata |
+
+### 3.4 Deploy
+
+Click **Deploy**
+
+Vercel will:
+1. Clone your repository
+2. Install dependencies
+3. Run build process
+4. Deploy to edge network
+
+First deploy takes ~3-5 minutes.
+
+## Step 4: Verify Deployment
+
+### 4.1 Check Build Logs
+
+- Go to deployment details
+- Review build logs for errors
+- Verify all environment variables were loaded
+
+### 4.2 Test Core Features
+
+Visit your deployed URL and test:
+
+- ✅ **Sign up/Login** - Create new account
+- ✅ **Create chatbot** - Create test chatbot
+- ✅ **Upload document** - Upload a PDF
+- ✅ **Chat** - Have a conversation
+- ✅ **Streaming** - Messages stream token-by-token
+- ✅ **Tool calls** - RAG retrieval works
+
+### 4.3 Check Browser Console
+
+Open DevTools → Console:
+- No errors related to environment variables
+- No CORS errors
+- No authentication failures
+
+## Step 5: Configure Custom Domain (Optional)
+
+### 5.1 Add Domain in Vercel
+
+1. Go to project **Settings** → **Domains**
+2. Click **Add Domain**
+3. Enter your domain: `app.yourdomain.com`
+
+### 5.2 Configure DNS
+
+Add CNAME record with your DNS provider:
+
+| Type | Name | Value |
+|------|------|-------|
+| CNAME | app | cname.vercel-dns.com |
+
+### 5.3 Wait for SSL Certificate
+
+Vercel automatically provisions SSL certificate (~1-2 minutes).
+
+### 5.4 Update Environment Variables
+
+Update `NEXT_PUBLIC_APP_URL` to your custom domain:
+```
+https://app.yourdomain.com
+```
+
+Redeploy for changes to take effect.
+
+## Step 6: Set Up Automatic Deployments
+
+Vercel automatically deploys on:
+- **Main branch push** → Production deployment
+- **Pull request** → Preview deployment
+- **Branch push** → Branch deployment
+
+### 6.1 Configure Git Integration
+
+In Vercel → **Settings** → **Git**:
+
+**Production Branch**: `main`
+
+**Preview Branches**: All branches
+
+**Ignored Build Step**: Leave empty (build always)
+
+### 6.2 Preview Deployments
+
+Every PR gets a unique preview URL:
+```
+https://syllabi-pr-42.vercel.app
+```
+
+Preview deployments:
+- Use same environment variables
+- Isolated from production
+- Perfect for testing changes
+
+## Advanced Configuration
+
+### Environment-Specific Variables
+
+Set different values per environment:
+
+1. Go to **Settings** → **Environment Variables**
+2. Click on a variable
+3. Set values for:
+   - **Production**: Used in production deployments
+   - **Preview**: Used in preview deployments
+   - **Development**: Used in local `vercel dev`
+
+Example:
+```
+NEXT_PUBLIC_APP_URL
+Production: https://app.yourdomain.com
+Preview: https://syllabi-preview.vercel.app
+Development: http://localhost:3000
+```
+
+### Vercel Functions Configuration
+
+Adjust serverless function settings in `next.config.mjs`:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Increase function timeout (Pro plan required for >10s)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb', // Increase body size for file uploads
+    },
+  },
+
+  // Configure API routes
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+        ],
+      },
+    ]
+  },
+}
+
+export default nextConfig
+```
+
+### Edge Runtime for Chat API
+
+For lower latency, deploy chat API to Edge Runtime:
+
+```typescript
+// src/app/api/chat/route.ts
+export const runtime = 'edge' // Use Edge Runtime instead of Node.js
+
+export async function POST(req: Request) {
+  // Handler code
+}
+```
+
+**Note**: Edge Runtime has limitations:
+- No Node.js built-ins
+- 1MB response limit
+- 30-second max execution time
+
+### Caching Strategy
+
+Configure caching in `next.config.mjs`:
+
+```javascript
+const nextConfig = {
+  // Cache static assets
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Monitoring and Analytics
+
+### Vercel Analytics
+
+Enable analytics to track:
+- Page views
+- User interactions
+- Web Vitals (Core Web Vitals)
+
+```bash
+npm install @vercel/analytics
+```
+
+```typescript
+// src/app/layout.tsx
+import { Analytics } from '@vercel/analytics/react'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  )
+}
+```
+
+### Vercel Speed Insights
+
+Track real user performance:
+
+```bash
+npm install @vercel/speed-insights
+```
+
+```typescript
+// src/app/layout.tsx
+import { SpeedInsights } from '@vercel/speed-insights/react'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
+    </html>
+  )
+}
+```
+
+### Log Drains
+
+Stream logs to external services:
+
+1. Go to **Settings** → **Log Drains**
+2. Add integration (Datadog, Axiom, etc.)
+3. Monitor application logs in real-time
+
+## Troubleshooting
+
+### Build Fails
+
+**Check environment variables**:
+- All required variables are set
+- No typos in variable names
+- Values are properly formatted
+
+**Check build logs**:
+```
+Error: Missing environment variable: NEXT_PUBLIC_SUPABASE_URL
+```
+
+Solution: Add missing variable in Vercel dashboard.
+
+### Runtime Errors
+
+**Function timeout**:
+```
+Error: Function execution timed out
+```
+
+Solutions:
+- Optimize slow database queries
+- Use background processing for heavy tasks
+- Upgrade to Vercel Pro for longer timeouts
+
+**Out of memory**:
+```
+Error: JavaScript heap out of memory
+```
+
+Solutions:
+- Reduce bundle size
+- Use dynamic imports
+- Optimize images
+
+### Environment Variables Not Loading
+
+**Issue**: `process.env.NEXT_PUBLIC_SUPABASE_URL` is undefined
+
+Solutions:
+1. Ensure variable name starts with `NEXT_PUBLIC_` for client-side
+2. Redeploy after adding variables
+3. Clear build cache: **Settings** → **General** → **Clear Cache**
+
+### CORS Errors
+
+**Issue**: API requests blocked by CORS
+
+Solution: Configure headers in `next.config.mjs`:
+
+```javascript
+async headers() {
+  return [
+    {
+      source: '/api/:path*',
+      headers: [
+        { key: 'Access-Control-Allow-Origin', value: 'https://yourdomain.com' },
+        { key: 'Access-Control-Allow-Methods', value: 'GET,POST,OPTIONS' },
+        { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+      ],
+    },
+  ]
+}
+```
+
+## Cost Optimization
+
+### Vercel Free Tier Limits
+
+- ✅ **100 GB bandwidth** per month
+- ✅ **1000 serverless function invocations** per day
+- ✅ **100 GB-hours function duration** per month
+- ✅ Unlimited preview deployments
+
+### Typical Usage
+
+For **1000 daily active users**:
+- ~30 GB bandwidth/month
+- ~50k function invocations/day
+- Fits comfortably in free tier
+
+### When to Upgrade
+
+Consider **Pro plan ($20/month)** when:
+- More than 100 GB bandwidth needed
+- Need longer function timeouts (>10s)
+- Want priority support
+- Team collaboration features
+
+## Security Best Practices
+
+### 1. Protect Sensitive Variables
+
+- ❌ Never use `NEXT_PUBLIC_` prefix for secrets
+- ✅ Use `NEXT_PUBLIC_` only for client-safe values
+- ✅ Store API keys as server-only variables
+
+```typescript
+// ✅ Good - Server-only
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// ❌ Bad - Exposed to client
+const serviceRoleKey = process.env.NEXT_PUBLIC_SERVICE_ROLE_KEY
+```
+
+### 2. Enable Vercel Authentication
+
+Restrict preview deployments:
+
+1. **Settings** → **Deployment Protection**
+2. Enable **Vercel Authentication**
+3. Only Vercel team members can access previews
+
+### 3. Set Up WAF Rules (Pro Plan)
+
+Protect against attacks:
+- Rate limiting
+- IP blocking
+- DDoS protection
+
+### 4. Review Permissions
+
+- Limit team member access
+- Use deployment protection
+- Enable audit logs (Enterprise)
+
+## Next Steps
+
+- [Railway Backend Deployment](/docs/deployment/railway-backend)
+- [Docker Compose Deployment](/docs/deployment/docker-compose)
+- [Environment Variables Reference](/docs/deployment/environment-variables)
+- [Troubleshooting](/docs/troubleshooting/common-errors)
+
+## Production Checklist
+
+Before going live:
+
+- [ ] All environment variables configured
+- [ ] Database migrations applied
+- [ ] Storage buckets created with RLS
+- [ ] Custom domain configured with SSL
+- [ ] Monitoring and analytics enabled
+- [ ] Error tracking set up (Sentry)
+- [ ] Backup strategy for database
+- [ ] Rate limiting configured
+- [ ] CORS headers configured
+- [ ] Test all critical user flows
+- [ ] Review security settings
+- [ ] Set up status page
+- [ ] Document deployment process
+- [ ] Create rollback plan

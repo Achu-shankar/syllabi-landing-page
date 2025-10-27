@@ -1,0 +1,514 @@
+# Environment Variables Reference
+
+Complete reference for all environment variables used in Syllabi.
+
+## Overview
+
+Environment variables are used to configure:
+- Database connections (Supabase)
+- AI model providers (OpenAI, Anthropic, Google)
+- Authentication and security
+- Feature flags
+- Third-party integrations
+
+## Variable Naming Convention
+
+| Prefix | Scope | Example |
+|--------|-------|---------|
+| `NEXT_PUBLIC_` | Client-side (exposed to browser) | `NEXT_PUBLIC_SUPABASE_URL` |
+| (none) | Server-side only | `SUPABASE_SERVICE_ROLE_KEY` |
+
+**Important**: Never use `NEXT_PUBLIC_` prefix for sensitive keys!
+
+## Required Variables
+
+### Frontend
+
+These variables are **required** for the frontend to run:
+
+#### Supabase Configuration
+
+```bash
+# Supabase project URL
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+```
+- **Where to find**: Supabase Dashboard → Settings → API → Project URL
+- **Scope**: Client-side (safe to expose)
+- **Example**: `https://abcdefghijklmnop.supabase.co`
+
+```bash
+# Supabase anonymous (public) key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+- **Where to find**: Supabase Dashboard → Settings → API → `anon` `public` key
+- **Scope**: Client-side (safe to expose, has RLS restrictions)
+- **Note**: This is the public key with Row Level Security protections
+
+```bash
+# Supabase service role key (server-side only)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+- **Where to find**: Supabase Dashboard → Settings → API → `service_role` `secret` key
+- **Scope**: Server-side ONLY (⚠️ has full database access)
+- **Security**: NEVER expose this key to the client
+- **Used for**: API routes that need to bypass RLS
+
+#### AI Configuration
+
+```bash
+# OpenAI API key
+OPENAI_API_KEY=sk-proj-...
+```
+- **Where to find**: [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Scope**: Server-side only
+- **Used for**: Chat completions, embeddings, and AI features
+- **Required**: Yes (unless using alternative providers)
+
+#### Application URL
+
+```bash
+# Your application's public URL
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+```
+- **Example**:
+  - Production: `https://app.yourdomain.com`
+  - Development: `http://localhost:3000`
+- **Scope**: Client-side
+- **Used for**: Shareable links, redirects, OAuth callbacks
+
+## Optional Variables
+
+### Backend Integration
+
+If using the optional Python backend for advanced document processing:
+
+```bash
+# Backend API URL
+NEXT_PUBLIC_BACKEND_URL=https://your-backend.railway.app
+```
+- **Scope**: Client-side
+- **Required if**: Using backend for document processing
+- **Example**: `https://syllabi-backend-production.up.railway.app`
+
+```bash
+# Shared secret for backend authentication
+BACKEND_API_KEY=your-random-secret-key
+```
+- **Scope**: Server-side only
+- **Generate with**: `openssl rand -hex 32`
+- **Required if**: Using backend
+- **Security**: Must match backend's `BACKEND_API_KEY`
+
+### Additional AI Providers
+
+#### Anthropic (Claude)
+
+```bash
+# Anthropic API key for Claude models
+ANTHROPIC_API_KEY=sk-ant-...
+```
+- **Where to find**: [Anthropic Console](https://console.anthropic.com/)
+- **Scope**: Server-side only
+- **Used for**: Claude 3 models (Opus, Sonnet, Haiku)
+- **Required**: Only if using Claude models
+
+#### Google (Gemini)
+
+```bash
+# Google Generative AI API key
+GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy...
+```
+- **Where to find**: [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Scope**: Server-side only
+- **Used for**: Gemini models
+- **Required**: Only if using Gemini models
+
+### Transcription Services
+
+#### AssemblyAI
+
+```bash
+# AssemblyAI API key for audio/video transcription
+ASSEMBLY_AI_API_KEY=...
+```
+- **Where to find**: [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/)
+- **Scope**: Server-side only (or backend)
+- **Used for**: Transcribing audio and video files
+- **Required**: Only if using transcription features
+
+#### YouTube API
+
+```bash
+# YouTube Data API v3 key
+YOUTUBE_API_KEY=AIzaSy...
+```
+- **Where to find**: [Google Cloud Console](https://console.cloud.google.com/)
+- **Scope**: Server-side only (or backend)
+- **Used for**: Fetching YouTube video metadata
+- **Required**: Only if supporting YouTube URL imports
+- **Setup**:
+  1. Create project in Google Cloud Console
+  2. Enable YouTube Data API v3
+  3. Create credentials (API key)
+
+### Feature Flags
+
+```bash
+# Enable/disable beta features
+NEXT_PUBLIC_ENABLE_BETA_FEATURES=false
+```
+- **Values**: `true` or `false`
+- **Default**: `false`
+- **Used for**: Gating experimental features
+
+```bash
+# Enable analytics
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+```
+- **Values**: `true` or `false`
+- **Default**: `true`
+- **Used for**: Vercel Analytics, usage tracking
+
+### Development
+
+```bash
+# Node environment
+NODE_ENV=production
+```
+- **Values**: `development`, `production`, `test`
+- **Automatically set by**: Next.js, Vercel
+- **Don't set manually** unless needed
+
+```bash
+# Debug mode
+DEBUG=false
+```
+- **Values**: `true` or `false`
+- **Default**: `false`
+- **Used for**: Extra logging, error details
+
+## Backend Variables
+
+If running the Python backend, these variables are needed:
+
+### Required
+
+```bash
+# Supabase configuration (same as frontend)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+
+# OpenAI API key (same as frontend)
+OPENAI_API_KEY=sk-proj-...
+
+# Redis connection for Celery
+REDIS_URL=redis://localhost:6379/0
+```
+- **Railway/Docker**: Auto-configured
+- **Local**: Use `redis://localhost:6379/0`
+- **Format**: `redis://[user:password@]host:port/db`
+
+```bash
+# Backend API key (must match frontend)
+BACKEND_API_KEY=your-random-secret-key
+```
+
+```bash
+# Environment
+ENVIRONMENT=production
+```
+- **Values**: `development`, `staging`, `production`
+
+### Optional
+
+```bash
+# AI providers (same as frontend)
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy...
+
+# Transcription (same as frontend)
+ASSEMBLY_AI_API_KEY=...
+YOUTUBE_API_KEY=AIzaSy...
+
+# CORS allowed origins
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+- **Used for**: CORS configuration in FastAPI
+- **Can be comma-separated**: `https://app.com,https://www.app.com`
+
+## Platform-Specific Configuration
+
+### Vercel (Frontend)
+
+Set in: **Project Settings → Environment Variables**
+
+**Production variables**:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://prod.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+OPENAI_API_KEY=sk-proj-...
+NEXT_PUBLIC_APP_URL=https://app.yourdomain.com
+NEXT_PUBLIC_BACKEND_URL=https://backend.railway.app
+BACKEND_API_KEY=your-secret
+```
+
+**Preview variables** (optional, different values):
+```bash
+NEXT_PUBLIC_APP_URL=https://syllabi-preview.vercel.app
+```
+
+**Development variables** (for `vercel dev`):
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Railway (Backend)
+
+Set in: **Service → Variables**
+
+**Backend service**:
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+OPENAI_API_KEY=sk-proj-...
+REDIS_URL=${{Redis.REDIS_URL}}
+BACKEND_API_KEY=your-secret
+ENVIRONMENT=production
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+**Worker service** (same as backend):
+```bash
+# Copy all variables from backend service
+SUPABASE_URL=...
+REDIS_URL=${{Redis.REDIS_URL}}
+# ... etc
+```
+
+**Note**: Railway's `${{Redis.REDIS_URL}}` syntax auto-references the Redis service.
+
+### Docker Compose
+
+Set in: `.env` file in project root
+
+```bash
+# Create .env file
+cp .env.example .env
+nano .env
+```
+
+All variables from both frontend and backend:
+```bash
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-...
+
+# Backend
+BACKEND_API_KEY=your-secret
+REDIS_URL=redis://redis:6379/0
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_BACKEND_URL=http://backend:8000
+```
+
+## Security Best Practices
+
+### 1. Never Commit Secrets
+
+✅ **Do**:
+- Use `.env.local` for development (gitignored)
+- Use `.env.example` for templates
+- Use platform environment variable UI
+
+❌ **Don't**:
+- Commit `.env` files
+- Hardcode secrets in code
+- Share secrets in Slack/Discord
+
+### 2. Use Different Keys per Environment
+
+```bash
+# Production
+OPENAI_API_KEY=sk-proj-production-key
+
+# Staging
+OPENAI_API_KEY=sk-proj-staging-key
+
+# Development
+OPENAI_API_KEY=sk-proj-dev-key
+```
+
+Benefits:
+- Isolate costs and usage
+- Easier to rotate keys
+- Track usage per environment
+
+### 3. Rotate Keys Regularly
+
+Schedule key rotation:
+- **Critical keys** (service role): Every 90 days
+- **API keys** (OpenAI, etc.): Every 180 days
+- **Internal keys** (backend API): Every 90 days
+
+### 4. Use Least Privilege
+
+For Supabase:
+- **Client-side**: Use `anon` key with RLS
+- **Server-side**: Use `service_role` only when needed
+- **API routes**: Prefer `anon` key + user JWT when possible
+
+### 5. Monitor Usage
+
+Track API usage:
+- OpenAI: [Usage Dashboard](https://platform.openai.com/usage)
+- Anthropic: [Console Usage](https://console.anthropic.com/)
+- Supabase: Project Dashboard → Settings → Usage
+
+Set up alerts for:
+- Unusual spending
+- Rate limit approaching
+- Failed authentication attempts
+
+## Validation and Testing
+
+### Test Environment Variables
+
+```bash
+# Frontend: Check in browser console
+console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL)
+
+# Should NOT show server-only variables
+console.log('Service Key:', process.env.SUPABASE_SERVICE_ROLE_KEY) // undefined (good!)
+```
+
+```bash
+# Backend: Check with Python
+python -c "import os; print('OpenAI Key set:', bool(os.getenv('OPENAI_API_KEY')))"
+```
+
+### Common Issues
+
+**Issue**: `process.env.NEXT_PUBLIC_SUPABASE_URL` is undefined
+
+**Solutions**:
+1. Restart dev server after adding variables
+2. Ensure variable name starts with `NEXT_PUBLIC_` for client access
+3. Check `.env.local` file exists in `frontend/` directory
+4. Verify no typos in variable names
+
+**Issue**: "Invalid API key" errors
+
+**Solutions**:
+1. Check key is correctly copied (no extra spaces)
+2. Verify key hasn't been revoked
+3. Ensure using correct key for environment
+4. Check key permissions/scopes
+
+**Issue**: Variables work locally but not in deployment
+
+**Solutions**:
+1. Add variables to platform (Vercel/Railway)
+2. Redeploy after adding variables
+3. Check variable names match exactly
+4. Verify no typos in platform UI
+
+## Environment Variable Checklist
+
+### Minimum Required (Frontend Only)
+
+- [ ] `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] `OPENAI_API_KEY`
+- [ ] `NEXT_PUBLIC_APP_URL`
+
+### With Backend
+
+- [ ] All frontend variables
+- [ ] `NEXT_PUBLIC_BACKEND_URL`
+- [ ] `BACKEND_API_KEY` (frontend)
+- [ ] `BACKEND_API_KEY` (backend, same value)
+- [ ] `REDIS_URL`
+- [ ] `ENVIRONMENT`
+
+### For Full Features
+
+- [ ] All required variables
+- [ ] `ANTHROPIC_API_KEY` (if using Claude)
+- [ ] `GOOGLE_GENERATIVE_AI_API_KEY` (if using Gemini)
+- [ ] `ASSEMBLY_AI_API_KEY` (if using transcription)
+- [ ] `YOUTUBE_API_KEY` (if supporting YouTube)
+
+## Template Files
+
+### `.env.example` (Frontend)
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-your-key
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Backend (optional)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+BACKEND_API_KEY=your-secret-key
+
+# Optional AI Providers
+ANTHROPIC_API_KEY=sk-ant-your-key
+GOOGLE_GENERATIVE_AI_API_KEY=your-key
+
+# Optional Features
+ASSEMBLY_AI_API_KEY=your-key
+YOUTUBE_API_KEY=your-key
+```
+
+### `.env.example` (Backend)
+
+```bash
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-your-key
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# API Security
+BACKEND_API_KEY=your-secret-key
+
+# Environment
+ENVIRONMENT=development
+
+# CORS
+FRONTEND_URL=http://localhost:3000
+
+# Optional
+ANTHROPIC_API_KEY=sk-ant-your-key
+GOOGLE_GENERATIVE_AI_API_KEY=your-key
+ASSEMBLY_AI_API_KEY=your-key
+YOUTUBE_API_KEY=your-key
+```
+
+## Next Steps
+
+- [Local Setup](/docs/getting-started/local-setup)
+- [Vercel Deployment](/docs/deployment/vercel-frontend)
+- [Railway Deployment](/docs/deployment/railway-backend)
+- [Docker Compose](/docs/deployment/docker-compose)
+- [Troubleshooting](/docs/troubleshooting/common-errors)

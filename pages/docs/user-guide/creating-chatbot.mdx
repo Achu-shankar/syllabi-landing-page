@@ -1,0 +1,519 @@
+# Creating a Chatbot
+
+Learn how to create and configure your first chatbot in Syllabi.
+
+## Overview
+
+A chatbot in Syllabi is an AI assistant that can:
+- Answer questions based on your uploaded documents
+- Use custom skills and actions
+- Integrate with Discord, Slack, and other platforms
+- Be customized with your own branding and theme
+
+## Step 1: Sign Up and Login
+
+### Create Account
+
+1. Go to your Syllabi instance (e.g., `https://app.yourdomain.com`)
+2. Click **Sign Up**
+3. Enter your email and password
+4. Verify your email (check inbox for verification link)
+5. Log in with your credentials
+
+### Dashboard Overview
+
+After logging in, you'll see:
+- **Chatbots list** - All your chatbots
+- **Create New Chatbot** button
+- **Settings** - Account settings
+- **Usage** - API usage and analytics
+
+## Step 2: Create Your First Chatbot
+
+### Basic Configuration
+
+1. Click **Create New Chatbot** button
+2. Fill in basic information:
+
+**Name**:
+```
+Customer Support Bot
+```
+- Choose a descriptive name for your chatbot
+- This is shown to users in the chat interface
+
+**Description** (optional):
+```
+AI assistant that helps customers with product questions and support issues
+```
+- Internal description for your reference
+- Not shown to end users
+
+**Shareable URL Slug**:
+```
+customer-support
+```
+- Creates public URL: `yourdomain.com/chat/customer-support`
+- Must be unique across your account
+- Use lowercase letters, numbers, and hyphens only
+
+3. Click **Create Chatbot**
+
+## Step 3: Configure AI Model
+
+### Model Selection
+
+Choose the AI model for your chatbot:
+
+**Recommended models**:
+
+| Model | Speed | Cost | Best For |
+|-------|-------|------|----------|
+| **gpt-4o-mini** | Fast | Low | General use, high volume |
+| **gpt-4o** | Medium | Medium | Complex queries, best quality |
+| **claude-3-5-sonnet** | Medium | Medium | Long documents, analysis |
+| **claude-3-haiku** | Fast | Low | Simple queries, speed priority |
+
+**How to select**:
+1. Go to **Settings** tab in chatbot page
+2. **AI Model** dropdown
+3. Select your preferred model
+4. Click **Save Changes**
+
+### Temperature Setting
+
+Controls response creativity:
+
+```
+0.0 - 2.0
+```
+
+- **0.0 - 0.3**: Precise, factual, deterministic (good for support bots)
+- **0.4 - 0.7**: Balanced (default, recommended)
+- **0.8 - 1.0**: Creative, varied responses
+- **1.1 - 2.0**: Very creative, unpredictable
+
+**Example settings**:
+- Customer support: `0.3`
+- General chat: `0.7`
+- Creative writing: `1.2`
+
+### System Prompt
+
+Define your chatbot's personality and behavior:
+
+**Example prompts**:
+
+**Customer Support Bot**:
+```
+You are a helpful customer support assistant for Acme Corp.
+
+Your role:
+- Answer questions about our products and services
+- Help troubleshoot common issues
+- Be friendly, professional, and patient
+- If you don't know the answer, recommend contacting support@acme.com
+
+Guidelines:
+- Keep responses concise and clear
+- Use the uploaded documentation to answer questions
+- Always verify information before responding
+- Escalate complex issues to human support
+```
+
+**Educational Tutor**:
+```
+You are an experienced teacher helping students learn mathematics.
+
+Your teaching style:
+- Break down complex concepts into simple steps
+- Use examples and analogies
+- Encourage students with positive reinforcement
+- Ask follow-up questions to check understanding
+
+When students ask questions:
+1. First, ask what they already understand
+2. Explain the concept clearly
+3. Provide an example
+4. Ask if they have questions
+```
+
+**Sales Assistant**:
+```
+You are a knowledgeable sales consultant for TechCo products.
+
+Your approach:
+- Understand customer needs through questions
+- Recommend relevant products from our catalog
+- Highlight key features and benefits
+- Compare products if asked
+- Provide pricing information
+
+Remember:
+- Be helpful, not pushy
+- Focus on customer value
+- Use information from product documentation
+- Suggest alternatives if needed
+```
+
+## Step 4: Upload Initial Content
+
+Upload documents that your chatbot will reference:
+
+1. Go to **Content** tab
+2. Click **Upload Document**
+3. Select file types:
+   - PDF documents
+   - Word files (.docx)
+   - Text files (.txt)
+   - Markdown files (.md)
+   - CSV files
+
+4. Wait for processing to complete
+5. Verify chunks in **Document Chunks** view
+
+**Best practices**:
+- Start with 3-5 key documents
+- Ensure documents are well-formatted
+- Remove sensitive information
+- Test with sample questions
+
+See [Uploading Documents](/docs/user-guide/uploading-documents) for detailed guide.
+
+## Step 5: Configure Suggested Prompts
+
+Help users get started with pre-written questions:
+
+1. Go to **Settings** tab
+2. **Suggested Prompts** section
+3. Add 3-5 example questions
+
+**Examples**:
+
+For **Customer Support**:
+```
+- How do I reset my password?
+- What are your shipping options?
+- How can I track my order?
+- What is your return policy?
+```
+
+For **Product Documentation**:
+```
+- How do I install the SDK?
+- What are the API rate limits?
+- How do I authenticate requests?
+- Where can I find code examples?
+```
+
+For **Educational Tutor**:
+```
+- Explain quadratic equations
+- How do I solve for x?
+- What is the Pythagorean theorem?
+- Can you help me with fractions?
+```
+
+## Step 6: Test Your Chatbot
+
+### Internal Testing
+
+1. Click **Test Chat** button
+2. Try sample questions:
+   - Ask about uploaded documents
+   - Test suggested prompts
+   - Verify response quality
+   - Check response time
+
+### Things to Test
+
+**Accuracy**:
+- ✅ Answers are correct and based on documents
+- ✅ Citations are provided when relevant
+- ✅ "I don't know" when information isn't available
+
+**Tone and Style**:
+- ✅ Follows system prompt guidelines
+- ✅ Appropriate personality
+- ✅ Consistent responses
+
+**Performance**:
+- ✅ Responses stream smoothly
+- ✅ Response time is acceptable (2-5 seconds)
+- ✅ No errors or timeouts
+
+**Edge Cases**:
+- ✅ Handles unclear questions
+- ✅ Gracefully handles off-topic questions
+- ✅ Doesn't make up information
+
+## Step 7: Customize Appearance (Optional)
+
+Make your chatbot match your brand:
+
+1. Go to **Theme** tab
+2. Customize colors:
+
+**Primary Color**: `#007bff`
+- Main brand color
+- Used for buttons, links, accents
+
+**Background Color**: `#ffffff`
+- Chat interface background
+
+**User Message Bubble**:
+- Background: `#007bff`
+- Text: `#ffffff`
+
+**Bot Message Bubble**:
+- Background: `#f0f0f0`
+- Text: `#000000`
+
+3. **Logo**: Upload your logo (PNG, JPG, max 2MB)
+4. **Font Family**: Choose from available fonts
+5. Click **Save Theme**
+
+See [Customizing Theme](/docs/user-guide/customizing-theme) for advanced options.
+
+## Step 8: Share Your Chatbot
+
+### Public URL
+
+Share via public URL:
+
+```
+https://yourdomain.com/chat/customer-support
+```
+
+**Access options**:
+- **Public**: Anyone with link can access
+- **Login Required**: Users must create account
+- **Domain Whitelist**: Restrict to specific domains
+
+### Embed on Website
+
+Get embed code:
+
+1. Go to **Share** tab
+2. Click **Get Embed Code**
+3. Copy snippet:
+
+```html
+<iframe
+  src="https://yourdomain.com/embed/customer-support"
+  width="100%"
+  height="600px"
+  frameborder="0"
+></iframe>
+```
+
+4. Add to your website HTML
+
+See [Embedding Widget](/docs/user-guide/embedding-widget) for advanced embedding.
+
+### Integrate with Platforms
+
+Connect to Discord, Slack, etc.:
+
+1. Go to **Integrations** tab
+2. Click **Add Integration**
+3. Select platform (Discord, Slack, etc.)
+4. Follow authentication flow
+5. Configure channel settings
+
+See [Integrations](/docs/user-guide/integrations) for detailed guides.
+
+## Managing Multiple Chatbots
+
+### When to Create Multiple Chatbots
+
+Create separate chatbots for:
+- **Different purposes**: Sales vs Support
+- **Different products**: Product A docs vs Product B docs
+- **Different audiences**: Internal vs External
+- **Different languages**: English bot vs Spanish bot
+- **Different integrations**: Discord bot vs Slack bot
+
+### Organizing Chatbots
+
+**Naming convention**:
+```
+[Purpose] - [Audience] - [Platform]
+
+Examples:
+- Support - Public - Web
+- Sales - Internal - Slack
+- Docs - Developers - Discord
+```
+
+**Use folders** (if available):
+```
+Customer Facing/
+├── Support Bot
+├── Sales Bot
+└── Onboarding Bot
+
+Internal/
+├── HR Bot
+└── IT Support Bot
+```
+
+## Best Practices
+
+### Content
+
+- ✅ Upload high-quality, relevant documents
+- ✅ Keep documents up to date
+- ✅ Remove outdated information
+- ✅ Organize content into folders
+- ✅ Test after adding new content
+
+### Configuration
+
+- ✅ Write clear, specific system prompts
+- ✅ Choose appropriate temperature setting
+- ✅ Use suggested prompts to guide users
+- ✅ Set reasonable context window
+- ✅ Enable relevant skills/actions
+
+### Monitoring
+
+- ✅ Review conversations regularly
+- ✅ Check analytics for usage patterns
+- ✅ Identify common questions
+- ✅ Monitor response quality
+- ✅ Gather user feedback
+
+### Maintenance
+
+- ✅ Update content regularly
+- ✅ Refine system prompt based on feedback
+- ✅ Add new suggested prompts
+- ✅ Archive old conversations
+- ✅ Rotate API keys periodically
+
+## Common Issues
+
+### Chatbot Gives Wrong Answers
+
+**Causes**:
+- Outdated or incorrect documents
+- Temperature too high (hallucinations)
+- System prompt not specific enough
+
+**Solutions**:
+1. Review and update uploaded documents
+2. Lower temperature to 0.3-0.5
+3. Make system prompt more specific about using documents
+4. Add explicit instructions to cite sources
+
+### Responses Are Too Slow
+
+**Causes**:
+- Too many documents
+- Large documents not chunked properly
+- Model is overloaded
+
+**Solutions**:
+1. Remove unnecessary documents
+2. Use smaller, focused documents
+3. Switch to faster model (gpt-4o-mini)
+4. Reduce max tokens in response
+
+### Chatbot Ignores Documents
+
+**Causes**:
+- Documents not processed correctly
+- Retrieval not working
+- System prompt doesn't mention documents
+
+**Solutions**:
+1. Check document processing status
+2. Verify embeddings were created
+3. Update system prompt to explicitly use uploaded documents:
+   ```
+   Always search the uploaded documents before answering.
+   Cite specific sections when providing information.
+   ```
+
+### Users Don't Know What to Ask
+
+**Solutions**:
+1. Add more suggested prompts
+2. Add welcome message explaining capabilities
+3. Provide examples in system prompt
+4. Create FAQ document to upload
+
+## Next Steps
+
+- [Upload Documents](/docs/user-guide/uploading-documents) - Add knowledge to your chatbot
+- [Customize Theme](/docs/user-guide/customizing-theme) - Match your branding
+- [Add Skills](/docs/user-guide/skills-actions) - Extend functionality
+- [Analytics](/docs/user-guide/analytics) - Monitor usage and performance
+- [Integrations](/docs/user-guide/integrations) - Connect to Discord, Slack, etc.
+
+## Advanced Configuration
+
+### Tool Selection Method
+
+Control how chatbot uses tools:
+
+**Auto (Recommended)**:
+- AI decides when to use tools
+- More intelligent responses
+- May use multiple tools per query
+
+**Required**:
+- Always uses tools for every query
+- Good for data lookup bots
+- Slower but more thorough
+
+**None**:
+- Never uses tools
+- Pure conversation mode
+- Fastest, but no document access
+
+### Context Window
+
+Maximum conversation history:
+
+```
+2048 - 128000 tokens
+```
+
+- **4096**: Short conversations, fast
+- **16384**: Standard conversations (default)
+- **32768**: Long context, detailed discussions
+- **128000**: Maximum context (Claude 3, expensive)
+
+**Recommendation**: Start with 16384 and adjust based on needs.
+
+### Response Settings
+
+**Max Tokens**: Limit response length
+```
+256 - 4096 tokens
+```
+- 256: Short, concise answers
+- 1024: Standard (default)
+- 2048+: Detailed, long-form responses
+
+**Stop Sequences**: End generation at specific tokens
+```
+["\n\nHuman:", "###"]
+```
+- Use to prevent chatbot from continuing conversation as user
+
+## Chatbot Settings Reference
+
+| Setting | Default | Range | Description |
+|---------|---------|-------|-------------|
+| Model | gpt-4o-mini | Various | AI model to use |
+| Temperature | 0.7 | 0.0 - 2.0 | Response creativity |
+| Max Tokens | 1024 | 256 - 4096 | Response length limit |
+| Context Window | 16384 | 2048 - 128000 | Conversation history |
+| Tool Selection | Auto | Auto/Required/None | How tools are used |
+
+---
+
+You've successfully created your first chatbot! Continue to the next guides to enhance it with documents, custom themes, and integrations.

@@ -1,0 +1,6 @@
+{
+  "vercel-frontend": "Vercel (Frontend)",
+  "railway-backend": "Railway (Backend)",
+  "docker-compose": "Docker Compose",
+  "environment-variables": "Environment Variables"
+}

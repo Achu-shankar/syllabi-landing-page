@@ -1,0 +1,429 @@
+# Integrations
+
+Connect your Syllabi chatbot to Discord, Slack, and other platforms.
+
+## Overview
+
+Syllabi integrations allow your chatbot to:
+- 💬 Respond in Discord servers
+- 💼 Answer questions in Slack workspaces
+- 🌐 Work across multiple platforms
+- 🔄 Sync conversations and knowledge
+
+## Discord Integration
+
+### Prerequisites
+
+- Discord account
+- Server with admin permissions
+- Syllabi chatbot configured
+
+### Setup Process
+
+#### 1. Create Discord Bot
+
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application**
+3. Name: "Your Bot Name"
+4. Click **Create**
+
+#### 2. Configure Bot
+
+1. Navigate to **Bot** section
+2. Click **Add Bot** → Confirm
+3. **Public Bot**: Toggle off (private)
+4. **Privileged Gateway Intents**:
+   - ✅ Message Content Intent
+   - ✅ Server Members Intent
+5. Click **Reset Token** → Copy token (save securely)
+
+#### 3. Set Bot Permissions
+
+1. **OAuth2** → **URL Generator**
+2. **Scopes**:
+   - ✅ `bot`
+   - ✅ `applications.commands`
+3. **Bot Permissions**:
+   - ✅ Read Messages/View Channels
+   - ✅ Send Messages
+   - ✅ Send Messages in Threads
+   - ✅ Embed Links
+   - ✅ Attach Files
+   - ✅ Read Message History
+4. Copy generated URL
+
+#### 4. Add Bot to Server
+
+1. Paste URL in browser
+2. Select your Discord server
+3. Click **Authorize**
+4. Complete captcha
+
+#### 5. Connect to Syllabi
+
+1. Syllabi dashboard → **Integrations** tab
+2. Click **Add Integration** → **Discord**
+3. Paste Discord bot token
+4. Configure settings:
+   - **Command Prefix**: `!` (or custom)
+   - **Mention Response**: On/Off
+   - **DM Response**: On/Off
+5. Select channels bot can access
+6. Click **Connect**
+
+### Usage
+
+**Command mode**:
+```
+!ask What is your refund policy?
+```
+
+**Mention mode**:
+```
+@YourBot How do I reset my password?
+```
+
+**DM mode**:
+```
+Direct message the bot with any question
+```
+
+### Channel Configuration
+
+**Public channels**:
+- Bot responds to all users
+- Good for: General support, FAQ
+
+**Private channels**:
+- Bot responds to channel members only
+- Good for: Team channels, restricted info
+
+**Thread support**:
+- Bot maintains context in threads
+- Each thread = separate conversation
+
+### Customization
+
+**Welcome message**:
+```
+Hi! I'm your AI assistant. Ask me anything about our products and services!
+
+Try:
+• !ask How do I install the software?
+• !ask What are your hours?
+```
+
+**Error messages**:
+```
+Sorry, I couldn't find information about that. Try rephrasing or contact support@company.com
+```
+
+## Slack Integration
+
+### Prerequisites
+
+- Slack workspace with admin access
+- Syllabi chatbot configured
+
+### Setup Process
+
+#### 1. Create Slack App
+
+1. Go to [Slack API](https://api.slack.com/apps)
+2. Click **Create New App** → **From Scratch**
+3. App Name: "Your Bot Name"
+4. Select workspace
+5. Click **Create App**
+
+#### 2. Configure Bot
+
+1. **OAuth & Permissions** → **Scopes**
+2. **Bot Token Scopes**:
+   - `chat:write`
+   - `chat:write.public`
+   - `channels:history`
+   - `channels:read`
+   - `groups:history`
+   - `im:history`
+   - `im:write`
+   - `users:read`
+
+#### 3. Enable Events
+
+1. **Event Subscriptions** → Toggle On
+2. **Request URL**:
+   ```
+   https://your-backend.railway.app/webhooks/slack
+   ```
+3. **Subscribe to bot events**:
+   - `message.channels`
+   - `message.groups`
+   - `message.im`
+   - `app_mention`
+4. **Save Changes**
+
+#### 4. Install to Workspace
+
+1. **Install App** section
+2. Click **Install to Workspace**
+3. Review permissions → **Allow**
+4. Copy **Bot User OAuth Token**
+
+#### 5. Connect to Syllabi
+
+1. Syllabi dashboard → **Integrations** → **Add Slack**
+2. Paste Bot OAuth Token
+3. Configure:
+   - **Response Mode**: Mention / Direct / All
+   - **Channels**: Select which channels bot can access
+4. Click **Connect**
+
+### Usage
+
+**Mention mode**:
+```
+@YourBot How do I export data?
+```
+
+**Direct message**:
+```
+DM the bot directly with questions
+```
+
+**Slash commands** (optional):
+```
+/ask What is your pricing?
+```
+
+### Features
+
+**Thread responses**:
+- Bot replies in threads to keep channels clean
+- Maintains conversation context
+
+**Rich formatting**:
+- Links, images, code blocks
+- File attachments
+- Interactive buttons (coming soon)
+
+**Presence**:
+- Shows as "online" when active
+- Custom status message
+
+## Microsoft Teams (Coming Soon)
+
+### Planned Features
+
+- Team channel integration
+- 1:1 chat support
+- Adaptive cards
+- Meeting integration
+
+**Sign up for beta**: Contact support@syllabi.io
+
+## Telegram (Coming Soon)
+
+### Planned Features
+
+- Bot API integration
+- Group chat support
+- Inline queries
+- Custom keyboards
+
+## WhatsApp Business (Coming Soon)
+
+### Planned Features
+
+- WhatsApp Business API
+- Message templates
+- Media support
+- Automated responses
+
+## Webhook Integration
+
+### Custom Webhooks
+
+Send chatbot responses to custom endpoints:
+
+#### Setup
+
+1. **Integrations** → **Add Webhook**
+2. **Webhook URL**:
+   ```
+   https://your-server.com/webhook/syllabi
+   ```
+3. **Events** to trigger:
+   - ✅ New message
+   - ✅ Conversation ended
+   - ✅ Document uploaded
+4. **Authentication**:
+   - Bearer token
+   - API key header
+   - HMAC signature
+5. Click **Create**
+
+#### Payload Format
+
+```json
+{
+  "event": "message.created",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "chatbot_id": "uuid",
+  "session_id": "uuid",
+  "message": {
+    "id": "uuid",
+    "role": "assistant",
+    "content": "Here's the answer...",
+    "metadata": {}
+  }
+}
+```
+
+#### Use Cases
+
+- Log conversations to CRM
+- Trigger notifications
+- Update external systems
+- Analytics and monitoring
+- Custom integrations
+
+## API Integration
+
+### REST API
+
+Access chatbot programmatically:
+
+```bash
+# Send message
+curl -X POST https://your-app.com/api/chat \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatbot_id": "uuid",
+    "message": "What is your refund policy?",
+    "session_id": "optional-uuid"
+  }'
+```
+
+```json
+{
+  "response": "Our refund policy allows...",
+  "session_id": "uuid",
+  "sources": [...]
+}
+```
+
+See [API Reference](/docs/api-reference/chat-api) for full documentation.
+
+## Managing Integrations
+
+### View Active Integrations
+
+**Integrations** tab shows:
+
+| Platform | Status | Channels | Last Activity | Actions |
+|----------|--------|----------|---------------|---------|
+| Discord | Active | 3 channels | 2 min ago | Config, Disconnect |
+| Slack | Active | 5 channels | 1 hour ago | Config, Disconnect |
+| Webhook | Active | - | 10 min ago | Edit, Delete |
+
+### Pausing Integrations
+
+1. Click **Pause** on integration
+2. Bot stops responding
+3. Click **Resume** to reactivate
+
+**Use cases**:
+- Maintenance windows
+- Testing changes
+- Temporary deactivation
+
+### Disconnecting
+
+1. Click **Disconnect**
+2. Confirm removal
+3. Bot removed from platform
+4. Conversations preserved in Syllabi
+
+## Best Practices
+
+### Discord
+
+✅ **Do**:
+- Set clear command prefix
+- Use role-based permissions
+- Enable thread responses
+- Set status message
+- Monitor for abuse
+
+❌ **Don't**:
+- Give bot admin permissions
+- Allow in every channel
+- Ignore rate limits
+- Spam users with DMs
+
+### Slack
+
+✅ **Do**:
+- Use mention mode in busy channels
+- Enable thread responses
+- Set custom app icon
+- Test in private channel first
+- Monitor workspace guidelines
+
+❌ **Don't**:
+- Post in every channel
+- Override user preferences
+- Send unsolicited DMs
+- Ignore Slack etiquette
+
+### General
+
+✅ **Do**:
+- Test thoroughly before launch
+- Monitor conversations
+- Update bot knowledge regularly
+- Gather user feedback
+- Have moderation plan
+
+❌ **Don't**:
+- Launch without testing
+- Ignore errors
+- Let bot respond to everything
+- Forget about rate limits
+
+## Troubleshooting
+
+### Discord Bot Not Responding
+
+**Check**:
+1. Bot token is correct
+2. Bot has channel permissions
+3. Message content intent enabled
+4. Bot is online (shows as active)
+5. Command prefix matches
+
+### Slack Bot Not Responding
+
+**Check**:
+1. Bot token valid
+2. Event subscriptions enabled
+3. Request URL verified
+4. Bot invited to channel
+5. Correct scopes granted
+
+### Webhook Failing
+
+**Debug**:
+1. Check webhook URL is accessible
+2. Verify authentication
+3. Check payload format
+4. Review server logs
+5. Test with curl/Postman
+
+## Next Steps
+
+- [Embedding Widget](/docs/user-guide/embedding-widget) - Add to website
+- [Analytics](/docs/user-guide/analytics) - Monitor platform usage
+- [API Reference](/docs/api-reference/chat-api) - Build custom integrations
+- [Troubleshooting](/docs/troubleshooting/common-errors) - Common issues

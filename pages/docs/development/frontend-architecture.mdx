@@ -1,0 +1,566 @@
+# Frontend Architecture
+
+Deep dive into the Syllabi frontend architecture, patterns, and key components.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: TailwindCSS + CSS Variables
+- **AI**: Vercel AI SDK v5
+- **Database**: Supabase (PostgreSQL + Auth + Storage)
+- **State**: React Context + Hooks
+- **UI Components**: shadcn/ui
+- **Forms**: React Hook Form
+- **Validation**: Zod
+
+## Application Architecture
+
+### High-Level Flow
+
+```
+User Request
+    ↓
+Next.js Middleware (Auth Check)
+    ↓
+App Router → Page Component
+    ↓
+React Components
+    ↓
+API Routes / Server Actions
+    ↓
+Supabase / OpenAI
+    ↓
+Response (Streaming or JSON)
+```
+
+## Key Features & Implementation
+
+### 1. Chat Interface with Streaming
+
+**Location**: `src/app/chat/[chatbotId]/`
+
+**Components**:
+- `ChatArea.tsx` - Main container
+- `messages/messages.tsx` - Message list
+- `messages/message.tsx` - Individual message
+- `multimodal-input.tsx` - Input with attachments
+
+**Streaming Implementation**:
+
+```typescript
+// Using Vercel AI SDK v5
+import { useChat } from '@ai-sdk/react'
+
+const {
+  messages,
+  sendMessage,
+  status,
+  isLoading
+} = useChat({
+  api: '/api/chat',
+  id: sessionId,
+  experimental_throttle: 50 // Smooth streaming
+})
+```
+
+**Key Patterns**:
+- **Optimistic Updates**: Messages appear immediately
+- **Streaming**: Token-by-token display using `experimental_transform`
+- **Memoization**: Careful memo use to avoid blocking renders
+- **Error Handling**: Fallback messages on API errors
+
+### 2. Document Upload & Processing
+
+**Location**: `src/app/dashboard/[chatbotId]/knowledge-base/`
+
+**Flow**:
+```
+User uploads file
+    ↓
+Frontend → /api/files/upload
+    ↓
+Upload to Supabase Storage
+    ↓
+Create record in chatbot_content_sources
+    ↓
+Trigger backend processing (optional)
+    ↓
+Frontend polls for indexing status
+    ↓
+Display success/error
+```
+
+**File Upload Component**:
+```typescript
+const handleUpload = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/files/upload', {
+    method: 'POST',
+    body: formData
+  })
+
+  const { url } = await response.json()
+  // File now in Supabase Storage
+}
+```
+
+### 3. Theme System
+
+**Location**: `src/app/dashboard/[chatbotId]/appearance/`
+
+**CSS Variables Approach**:
+
+```css
+/* Theme stored in database */
+{
+  primary_color: "#007bff",
+  background_color: "#ffffff",
+  user_bubble_bg: "#007bff",
+  user_bubble_text: "#ffffff",
+  bot_bubble_text: "#000000"
+}
+
+/* Applied as CSS variables */
+:root {
+  --chat-primary-color: #007bff;
+  --chat-background-color: #ffffff;
+  --chat-bubble-user-background-color: #007bff;
+  --chat-bubble-user-text-color: #ffffff;
+  --chat-bubble-bot-text-color: #000000;
+}
+
+/* Components use variables */
+.chat-container {
+  background-color: var(--chat-background-color);
+}
+```
+
+**Benefits**:
+- No build step needed
+- Real-time preview
+- Per-chatbot customization
+- Easy overrides
+
+### 4. Authentication Flow
+
+**Location**: `src/app/(auth-pages)/`
+
+**Supabase Auth Integration**:
+
+```typescript
+// Sign Up
+const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: `${origin}/auth/callback`
+  }
+})
+
+// Sign In
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password
+})
+
+// OAuth (Google, GitHub, etc.)
+const { data, error } = await supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: {
+    redirectTo: `${origin}/auth/callback`
+  }
+})
+```
+
+**Middleware Protection**:
+```typescript
+// middleware.ts
+export async function middleware(request: NextRequest) {
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/sign-in', request.url))
+  }
+
+  return NextResponse.next()
+}
+```
+
+### 5. Skills/Actions System
+
+**Location**: `src/services/chat/tools-builder.ts`
+
+**AI SDK Tool Definition**:
+
+```typescript
+import { tool } from 'ai'
+import { z } from 'zod'
+
+const tools = {
+  getRelevantDocuments: tool({
+    description: 'Search the knowledge base',
+    inputSchema: z.object({
+      query: z.string(),
+      maxResults: z.number().optional()
+    }),
+    execute: async ({ query, maxResults }) => {
+      // 1. Generate embedding
+      const { embedding } = await embed({
+        model: openai.embedding('text-embedding-3-small'),
+        value: query
+      })
+
+      // 2. Search in database
+      const { data } = await supabase.rpc('match_document_chunks', {
+        query_embedding: embedding,
+        match_count: maxResults
+      })
+
+      // 3. Return results
+      return { documents: data }
+    }
+  })
+}
+```
+
+**Custom Skills from Database**:
+- Stored in `chatbot_skills` table
+- Loaded dynamically per chatbot
+- Executed with user-defined parameters
+- Can call external APIs
+
+### 6. Real-time Features
+
+**Chat History Sidebar**:
+```typescript
+// Subscribe to new sessions
+useEffect(() => {
+  const channel = supabase
+    .channel('chat_sessions')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'chat_sessions',
+      filter: `user_id=eq.${userId}`
+    }, (payload) => {
+      // Add new session to list
+      setSessions(prev => [payload.new, ...prev])
+    })
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}, [userId])
+```
+
+### 7. Analytics Dashboard
+
+**Location**: `src/app/dashboard/[chatbotId]/analytics/`
+
+**Data Fetching**:
+```typescript
+// Server Component
+async function AnalyticsPage({ params }) {
+  const supabase = createServerClient()
+
+  // Query aggregated data
+  const { data: metrics } = await supabase
+    .from('chat_messages')
+    .select('created_at, chatbot_id')
+    .eq('chatbot_id', params.chatbotId)
+    .gte('created_at', thirtyDaysAgo)
+
+  // Process for charts
+  const dailyMessages = groupByDay(metrics)
+
+  return <AnalyticsCharts data={dailyMessages} />
+}
+```
+
+**Charts**: Using Recharts library
+
+## State Management
+
+### Global State
+- **User Session**: Supabase Auth Context
+- **Theme**: CSS Variables (no state)
+- **Toast Notifications**: sonner library
+
+### Local State
+- **Chat**: `useChat` hook from AI SDK
+- **Forms**: React Hook Form
+- **UI**: React useState
+
+### Server State
+- **Caching**: React Server Components
+- **Revalidation**: `revalidatePath()` after mutations
+
+## API Routes Architecture
+
+### Chat API (`/api/chat/route.ts`)
+
+```typescript
+export async function POST(request: Request) {
+  // 1. Parse request
+  const { messages, chatbotSlug } = await request.json()
+
+  // 2. Get chatbot config
+  const config = await getChatbotConfig(chatbotSlug)
+
+  // 3. Build system prompt
+  const systemPrompt = buildSystemPrompt(config.instructions)
+
+  // 4. Load tools/skills
+  const tools = await getSkillsAsTools(config.id)
+
+  // 5. Stream response
+  const result = streamText({
+    model: openai(config.model),
+    system: systemPrompt,
+    messages: convertToModelMessages(messages),
+    tools,
+    experimental_transform: smoothStream({ chunking: 'line' }),
+    onFinish: async ({ text, usage }) => {
+      // Save message to database
+      await saveMessage({ text, usage, sessionId })
+    }
+  })
+
+  // 6. Return stream
+  return result.toUIMessageStreamResponse()
+}
+```
+
+### File Upload API (`/api/files/upload/route.ts`)
+
+```typescript
+export async function POST(request: Request) {
+  const formData = await request.formData()
+  const file = formData.get('file') as File
+
+  // 1. Validate file
+  if (!file) return new Response('No file', { status: 400 })
+  if (file.size > MAX_SIZE) return new Response('Too large', { status: 413 })
+
+  // 2. Upload to Supabase Storage
+  const fileName = `${userId}/${timestamp}-${file.name}`
+  const { data, error } = await supabase.storage
+    .from('chat-files')
+    .upload(fileName, file)
+
+  // 3. Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('chat-files')
+    .getPublicUrl(fileName)
+
+  return Response.json({ url: publicUrl })
+}
+```
+
+## Performance Optimizations
+
+### 1. React Memoization
+```typescript
+// Memoize expensive components
+export const PreviewMessage = memo(
+  PurePreviewMessage,
+  (prevProps, nextProps) => {
+    // Don't memo during streaming
+    if (prevProps.isLoading || nextProps.isLoading) return false
+
+    // Compare message content
+    if (!equal(prevProps.message.parts, nextProps.message.parts)) return false
+
+    return true
+  }
+)
+```
+
+### 2. Code Splitting
+```typescript
+// Lazy load heavy components
+const PdfViewer = dynamic(() => import('./PdfViewer'), {
+  loading: () => <Skeleton />,
+  ssr: false
+})
+```
+
+### 3. Image Optimization
+```typescript
+import Image from 'next/image'
+
+<Image
+  src={logoUrl}
+  alt="Logo"
+  width={100}
+  height={100}
+  priority // For above-fold images
+/>
+```
+
+### 4. Database Queries
+- Use indexes on frequently queried columns
+- Limit results with pagination
+- Use RLS for security (not authorization logic)
+- Cache expensive queries
+
+## Error Handling
+
+### Client-Side Errors
+```typescript
+try {
+  await sendMessage({ text: input })
+} catch (error) {
+  if (error instanceof Response && error.status === 429) {
+    toast.error('Rate limit exceeded')
+  } else {
+    toast.error('Failed to send message')
+  }
+}
+```
+
+### API Error Responses
+```typescript
+if (!chatbotSlug) {
+  return new Response(
+    JSON.stringify({ error: 'Missing chatbot slug' }),
+    { status: 400, headers: { 'Content-Type': 'application/json' } }
+  )
+}
+```
+
+## Security Considerations
+
+### 1. Row Level Security (RLS)
+All database queries automatically filtered by user:
+```sql
+CREATE POLICY "Users can only access their chatbots"
+ON chatbots FOR ALL
+USING (auth.uid() = user_id);
+```
+
+### 2. API Route Protection
+```typescript
+export async function POST(request: Request) {
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Continue with authenticated logic
+}
+```
+
+### 3. Input Validation
+```typescript
+import { z } from 'zod'
+
+const schema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional()
+})
+
+const result = schema.safeParse(data)
+if (!result.success) {
+  return new Response('Invalid input', { status: 400 })
+}
+```
+
+### 4. Rate Limiting
+Implemented in `src/services/chat/rate-limiter.ts`:
+- Per-user limits
+- Per-chatbot limits
+- Stored in database
+- Configurable per plan
+
+## Testing Strategy
+
+### Unit Tests
+```typescript
+import { render, screen } from '@testing-library/react'
+
+describe('ChatMessage', () => {
+  it('renders message text', () => {
+    render(<ChatMessage message={{ text: 'Hello' }} />)
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+  })
+})
+```
+
+### Integration Tests
+- API route testing
+- Database operations
+- Authentication flows
+
+### E2E Tests (Recommended)
+- User signup flow
+- Create chatbot
+- Send message
+- Upload document
+
+## Development Workflow
+
+### Local Development
+```bash
+npm run dev          # Start dev server
+npm run type-check   # TypeScript checking
+npm run lint         # ESLint
+npm run build        # Production build
+```
+
+### Git Workflow
+```bash
+git checkout -b feature/your-feature
+# Make changes
+git commit -m "feat: add feature"
+git push origin feature/your-feature
+# Create PR
+```
+
+## Common Patterns
+
+### Data Fetching Pattern
+```typescript
+// Server Component (preferred)
+async function Page() {
+  const data = await fetchData()
+  return <Component data={data} />
+}
+
+// Client Component (when needed)
+function Component() {
+  const [data, setData] = useState()
+  useEffect(() => {
+    fetchData().then(setData)
+  }, [])
+  return data ? <div>{data}</div> : <Loading />
+}
+```
+
+### Form Pattern
+```typescript
+const form = useForm({
+  resolver: zodResolver(schema),
+  defaultValues: { name: '' }
+})
+
+const onSubmit = async (data) => {
+  await saveToDatabase(data)
+  toast.success('Saved!')
+}
+
+return <form onSubmit={form.handleSubmit(onSubmit)}>...</form>
+```
+
+## Next Steps
+
+- [Backend Architecture](/docs/development/backend-architecture)
+- [Database Schema](/docs/development/database-schema)
+- [Contributing Guide](/docs/development/contributing)

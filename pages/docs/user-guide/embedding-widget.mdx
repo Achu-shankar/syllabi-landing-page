@@ -1,0 +1,601 @@
+# Embedding Widget
+
+Add your Syllabi chatbot to any website with a customizable widget.
+
+## Overview
+
+The embedding widget allows you to:
+- 💬 Add chat interface to your website
+- 🎨 Match your website's design
+- 📱 Responsive on all devices
+- ⚡ Loads asynchronously (fast)
+- 🔧 Highly customizable
+
+## Quick Start
+
+### Get Embed Code
+
+1. Go to chatbot dashboard → **Share** tab
+2. Click **Embed on Website**
+3. Copy the embed code
+
+### Basic Embed
+
+Paste before closing `</body>` tag:
+
+```html
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'your-chatbot-id',
+    host: 'https://your-app.com'
+  };
+</script>
+<script src="https://your-app.com/embed.js" async></script>
+```
+
+That's it! The chat widget will appear in the bottom-right corner.
+
+## Widget Appearance
+
+### Bubble Button
+
+Floating button that opens the chat:
+
+```javascript
+window.syllabiChatbot = {
+  chatbotId: 'your-chatbot-id',
+  host: 'https://your-app.com',
+
+  // Button customization
+  button: {
+    position: 'bottom-right', // or 'bottom-left'
+    icon: 'chat', // 'chat', 'help', 'custom'
+    iconUrl: 'https://your-site.com/icon.png', // if icon='custom'
+    backgroundColor: '#007bff',
+    size: '60px',
+    offset: {
+      bottom: '20px',
+      right: '20px'
+    }
+  }
+};
+```
+
+### Chat Window
+
+Customize the popup chat window:
+
+```javascript
+window.syllabiChatbot = {
+  // ... other config
+
+  window: {
+    title: 'Chat with us',
+    subtitle: 'We typically reply in minutes',
+    width: '400px',
+    height: '600px',
+    position: 'bottom-right', // or 'bottom-left', 'center'
+    borderRadius: '16px',
+    shadow: 'large', // 'none', 'small', 'medium', 'large'
+  }
+};
+```
+
+### Colors and Theme
+
+Match your website's colors:
+
+```javascript
+window.syllabiChatbot = {
+  // ... other config
+
+  theme: {
+    primaryColor: '#007bff',
+    backgroundColor: '#ffffff',
+    userMessageColor: '#007bff',
+    botMessageColor: '#f0f0f0',
+    userMessageTextColor: '#ffffff',
+    botMessageTextColor: '#000000',
+    fontFamily: 'Inter, sans-serif',
+    headerBackground: '#007bff',
+    headerTextColor: '#ffffff'
+  }
+};
+```
+
+## Display Modes
+
+### Popup Mode (Default)
+
+Floating button that opens a popup:
+
+```javascript
+window.syllabiChatbot = {
+  chatbotId: 'your-chatbot-id',
+  mode: 'popup', // default
+  // ... config
+};
+```
+
+### Inline Mode
+
+Embed directly in page:
+
+```html
+<div id="syllabi-chat-container"></div>
+
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'your-chatbot-id',
+    mode: 'inline',
+    container: '#syllabi-chat-container',
+    height: '600px'
+  };
+</script>
+<script src="https://your-app.com/embed.js" async></script>
+```
+
+### Full Page Mode
+
+Take over entire page:
+
+```javascript
+window.syllabiChatbot = {
+  chatbotId: 'your-chatbot-id',
+  mode: 'fullpage'
+};
+```
+
+Useful for:
+- Dedicated support pages
+- `/chat` or `/support` pages
+- Mobile apps (WebView)
+
+## Behavior Configuration
+
+### Auto-Open
+
+Open chat automatically:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  autoOpen: {
+    enabled: true,
+    delay: 5000, // Open after 5 seconds
+    once: true // Only on first visit
+  }
+};
+```
+
+### Welcome Message
+
+Show greeting when opened:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  welcomeMessage: "Hi! 👋 How can I help you today?",
+  suggestedPrompts: [
+    "How do I get started?",
+    "What are your pricing options?",
+    "Contact support"
+  ]
+};
+```
+
+### Trigger Events
+
+Open chat based on user behavior:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  triggers: [
+    {
+      type: 'exit-intent',
+      message: 'Before you go, can I help with anything?'
+    },
+    {
+      type: 'scroll',
+      percentage: 50, // Open after scrolling 50% down page
+      delay: 2000
+    },
+    {
+      type: 'time',
+      seconds: 30, // Open after 30 seconds
+      message: 'Need help? I'm here to assist!'
+    }
+  ]
+};
+```
+
+## Advanced Features
+
+### Pre-fill User Information
+
+Pass user data to chatbot:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  user: {
+    id: 'user-123',
+    name: 'John Doe',
+    email: 'john@example.com',
+    customData: {
+      plan: 'premium',
+      accountCreated: '2024-01-15'
+    }
+  }
+};
+```
+
+Bot can use this for personalization:
+```
+Bot: "Hi John! I see you're on our Premium plan. How can I help you today?"
+```
+
+### Custom Context
+
+Provide page-specific context:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  context: {
+    page: 'pricing',
+    product: 'Enterprise Plan',
+    utm_source: 'google',
+    utm_campaign: 'spring-sale'
+  }
+};
+```
+
+Bot has access to this context:
+```
+User: "Tell me about pricing"
+Bot: [Knows user is on pricing page for Enterprise Plan]
+     "I see you're looking at our Enterprise Plan! It includes..."
+```
+
+### Event Callbacks
+
+React to chat events:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  onOpen: function() {
+    console.log('Chat opened');
+    // Track analytics
+    gtag('event', 'chat_opened');
+  },
+
+  onClose: function() {
+    console.log('Chat closed');
+  },
+
+  onMessage: function(message) {
+    console.log('New message:', message);
+  },
+
+  onConversationEnd: function(conversation) {
+    console.log('Conversation ended:', conversation);
+    // Show feedback form
+  }
+};
+```
+
+### Programmatic Control
+
+Control chat via JavaScript:
+
+```javascript
+// Open chat
+window.SyllabiChat.open();
+
+// Close chat
+window.SyllabiChat.close();
+
+// Send message programmatically
+window.SyllabiChat.sendMessage('Hello!');
+
+// Reset conversation
+window.SyllabiChat.reset();
+
+// Update user info
+window.SyllabiChat.updateUser({
+  name: 'Jane Doe',
+  email: 'jane@example.com'
+});
+
+// Check if chat is open
+if (window.SyllabiChat.isOpen()) {
+  // ...
+}
+```
+
+**Example**: Open chat when user clicks a button:
+
+```html
+<button onclick="window.SyllabiChat.open()">
+  Need Help?
+</button>
+```
+
+## Mobile Optimization
+
+### Responsive Design
+
+Widget automatically adapts:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  mobile: {
+    fullscreen: true, // Take full screen on mobile
+    position: 'bottom', // Button at bottom on mobile
+    closeButton: 'back', // Use back button instead of X
+  }
+};
+```
+
+### Mobile-Specific Behavior
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  autoOpen: {
+    enabled: true,
+    delay: 10000,
+    desktop: true,
+    mobile: false // Don't auto-open on mobile (intrusive)
+  }
+};
+```
+
+## Security and Privacy
+
+### Domain Whitelist
+
+Restrict embedding to specific domains:
+
+1. Dashboard → **Settings** → **Allowed Domains**
+2. Add domains:
+   ```
+   example.com
+   www.example.com
+   subdomain.example.com
+   ```
+3. Widget only works on these domains
+
+### User Authentication
+
+Require users to log in:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  auth: {
+    required: true,
+    provider: 'custom',
+    getToken: async function() {
+      // Return JWT token from your auth system
+      const token = await fetchUserToken();
+      return token;
+    }
+  }
+};
+```
+
+### Data Privacy
+
+Configure privacy settings:
+
+```javascript
+window.syllabiChatbot = {
+  // ... config
+
+  privacy: {
+    collectUserData: false, // Don't track user info
+    anonymousMode: true, // No user identification
+    gdprCompliant: true, // Show GDPR consent
+    consentMessage: 'By using this chat, you agree to our privacy policy.'
+  }
+};
+```
+
+## Performance Optimization
+
+### Lazy Loading
+
+Load widget only when needed:
+
+```javascript
+// Load script only when user interacts
+document.getElementById('help-button').addEventListener('click', function() {
+  if (!window.SyllabiChat) {
+    const script = document.createElement('script');
+    script.src = 'https://your-app.com/embed.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = function() {
+      window.SyllabiChat.open();
+    };
+  } else {
+    window.SyllabiChat.open();
+  }
+});
+```
+
+### Preload
+
+Preload for faster loading:
+
+```html
+<link rel="preload" href="https://your-app.com/embed.js" as="script">
+<link rel="preconnect" href="https://your-app.com">
+```
+
+## Examples
+
+### E-commerce Store
+
+```html
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'shop-assistant',
+    host: 'https://chat.yourstore.com',
+
+    button: {
+      position: 'bottom-right',
+      backgroundColor: '#000000'
+    },
+
+    theme: {
+      primaryColor: '#000000',
+      userMessageColor: '#000000'
+    },
+
+    welcomeMessage: 'Hi! Need help finding something?',
+    suggestedPrompts: [
+      'Track my order',
+      'What\'s your return policy?',
+      'Product recommendations'
+    ],
+
+    context: {
+      page: window.location.pathname,
+      cartValue: getCartTotal(),
+      itemsInCart: getCartItemCount()
+    },
+
+    triggers: [
+      {
+        type: 'exit-intent',
+        message: 'Before you go, can I help you complete your order?'
+      }
+    ]
+  };
+</script>
+<script src="https://chat.yourstore.com/embed.js" async></script>
+```
+
+### SaaS Documentation
+
+```html
+<div id="docs-chat-container" style="height: 600px;"></div>
+
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'docs-assistant',
+    mode: 'inline',
+    container: '#docs-chat-container',
+
+    theme: {
+      primaryColor: '#6366f1',
+      fontFamily: 'system-ui, sans-serif'
+    },
+
+    welcomeMessage: 'Ask me anything about our documentation!',
+
+    context: {
+      docPage: document.title,
+      docSection: getCurrentSection(),
+      version: 'v2.0'
+    }
+  };
+</script>
+<script src="https://docs.yourapp.com/embed.js" async></script>
+```
+
+### Healthcare Portal
+
+```html
+<script>
+  window.syllabiChatbot = {
+    chatbotId: 'patient-support',
+
+    theme: {
+      primaryColor: '#2e7d9a',
+      backgroundColor: '#f0f8ff'
+    },
+
+    welcomeMessage: 'Hi! How can I assist you with your healthcare needs today?',
+
+    auth: {
+      required: true,
+      provider: 'custom',
+      getToken: async () => await getPatientToken()
+    },
+
+    user: {
+      id: getCurrentPatient().id,
+      name: getCurrentPatient().name
+    },
+
+    privacy: {
+      gdprCompliant: true,
+      collectUserData: false,
+      consentMessage: 'This chat is HIPAA compliant and your data is protected.'
+    }
+  };
+</script>
+<script src="https://portal.healthcare.com/embed.js" async></script>
+```
+
+## Troubleshooting
+
+### Widget Not Showing
+
+**Check**:
+1. Script is loaded (check browser console)
+2. Chatbot ID is correct
+3. Domain is whitelisted
+4. No JavaScript errors
+5. CSS isn't hiding the widget
+
+### Widget Behind Other Elements
+
+**Fix z-index**:
+```css
+#syllabi-chat-widget {
+  z-index: 999999 !important;
+}
+```
+
+### Styling Conflicts
+
+**Isolate widget styles**:
+```javascript
+window.syllabiChatbot = {
+  // ... config
+  isolateStyles: true // Prevent CSS conflicts
+};
+```
+
+### Slow Loading
+
+**Optimize**:
+1. Use async script loading
+2. Enable caching
+3. Lazy load widget
+4. Compress assets
+
+## Next Steps
+
+- [Customizing Theme](/docs/user-guide/customizing-theme) - Advanced styling
+- [Analytics](/docs/user-guide/analytics) - Track widget performance
+- [API Reference](/docs/api-reference/chat-api) - Programmatic integration
+- [Troubleshooting](/docs/troubleshooting/common-errors) - Common issues
