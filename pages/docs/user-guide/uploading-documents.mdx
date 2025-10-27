@@ -4,15 +4,20 @@ Learn how to upload and manage documents for your chatbot's knowledge base.
 
 ## Overview
 
-Documents provide your chatbot with knowledge to answer questions. Syllabi supports:
+Documents provide your chatbot with knowledge to answer questions. Syllabi currently supports:
 
 - 📄 **PDF files** - Manuals, guides, reports
-- 📝 **Word documents** - .docx files
 - 📄 **Text files** - .txt, .md
 - 📊 **CSV files** - Structured data
-- 🎥 **Videos** - YouTube URLs, uploaded videos
-- 🎵 **Audio files** - Podcasts, recordings
-- 🌐 **Web pages** - Any URL
+- 🎥 **Video files** - Upload MP4, AVI, MOV files directly
+- 🎵 **Audio files** - Upload MP3, WAV files directly
+- 🌐 **Web pages** - Import via URL
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+**Coming Soon**: Direct Word document (.docx) upload and YouTube URL import are planned for future releases. For now, convert Word documents to PDF and download videos before uploading.
+</Callout>
 
 ## Document Processing Pipeline
 
@@ -97,36 +102,28 @@ Employee-Handbook-2024.pdf
 
 ## Uploading Word Documents
 
-### Supported Formats
+<Callout type="warning">
+**Word documents (.docx, .doc) are not directly supported yet.** To use Word documents, convert them to PDF first.
+</Callout>
 
-- `.docx` - Microsoft Word (2007+)
-- `.doc` - Legacy Word (requires backend)
+### Converting Word to PDF
 
-### Upload Process
+**Option 1: Using Microsoft Word**
+1. Open your document in Word
+2. File → Save As
+3. Choose **PDF** from format dropdown
+4. Save and upload the PDF
 
-1. **Content** tab → **Upload Document**
-2. Select **Word Document**
-3. Choose `.docx` file
-4. Upload and process
+**Option 2: Online Converters**
+- [pdf.io](https://pdf.io/word-to-pdf/)
+- [Smallpdf](https://smallpdf.com/word-to-pdf)
+- [CloudConvert](https://cloudconvert.com/docx-to-pdf)
 
-### Advantages
-
-- ✅ Better text extraction than PDF
-- ✅ Preserves formatting and structure
-- ✅ Smaller file sizes
-- ✅ Faster processing
-
-### Tips
-
-**Convert PDFs to Word**:
-- Use Microsoft Word: File → Open → Select PDF
-- Use online tools: [pdf2doc.com](https://pdf2doc.com)
-- Better results than direct PDF parsing
-
-**Formatting**:
-- Use heading styles (H1, H2, H3)
-- Clear section breaks
-- Consistent formatting
+### Why Convert?
+- ✅ Better text extraction from PDF
+- ✅ Preserves formatting
+- ✅ Ensures compatibility
+- ✅ Works immediately without waiting for feature release
 
 ## Uploading Text Files
 
@@ -191,22 +188,33 @@ Chatbot can answer:
 - "Show me hardware products" → Lists all hardware items
 - "Compare Widget Pro and Widget Plus" → Provides comparison
 
-## Uploading Videos (YouTube)
+## Uploading Videos
 
-### YouTube URL Import
+<Callout type="warning">
+**YouTube URL import is not yet supported.** To use videos, download them first and upload the video file directly.
+</Callout>
 
-1. **Content** tab → **Add URL**
-2. Select **YouTube Video**
-3. Paste URL:
-   ```
-   https://www.youtube.com/watch?v=dQw4w9WgXcQ
-   ```
-4. Click **Import**
+### Supported Video Formats
+
+- `.mp4` - MPEG-4 video
+- `.avi` - Audio Video Interleave
+- `.mov` - QuickTime movie
+- `.mkv` - Matroska video
+
+### Upload Process
+
+1. **Download your video** (from YouTube, Vimeo, etc.)
+   - Use tools like: [4K Video Downloader](https://www.4kdownload.com/), [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+2. **Content** tab → **Upload Document**
+3. Select **Video** from file type dropdown
+4. Choose your video file (max 200MB recommended)
+5. Click **Upload**
+6. Wait for transcription and processing
 
 ### Processing
 
-1. **Fetch metadata**: Title, description, duration
-2. **Download transcript**: Auto-generated or manual captions
+1. **Extract audio**: Audio track extracted from video
+2. **Transcribe**: Speech-to-text using Whisper API
 3. **Chunk by timestamps**: Each chunk includes time range
 4. **Generate embeddings**: Search by content and timestamp
 
@@ -218,12 +226,16 @@ Users can ask:
 - "At what timestamp is Y discussed?"
 - "What topics are covered?"
 
-### Limitations
+### Tips
 
-- ⚠️ Requires YouTube API key (optional)
-- ⚠️ Only videos with captions/transcripts
-- ⚠️ Transcripts must be publicly available
-- ⚠️ Subject to YouTube API quotas
+- ✅ Clear audio quality improves transcription accuracy
+- ✅ Minimal background noise
+- ✅ Keep file sizes reasonable (< 200MB)
+- ✅ Use common formats (MP4 recommended)
+
+<Callout type="info">
+**Coming Soon**: Direct YouTube URL import will be added in a future release, eliminating the need to download videos manually.
+</Callout>
 
 ## Uploading Audio Files
 
@@ -237,7 +249,7 @@ Users can ask:
 ### Transcription Process
 
 1. Upload audio file (max 200MB)
-2. File sent to transcription service (AssemblyAI)
+2. File sent to transcription service (Whisper API)
 3. Speech-to-text conversion
 4. Transcript chunked and embedded
 5. Ready for queries
@@ -246,7 +258,7 @@ Users can ask:
 
 - ✅ Clear audio quality
 - ✅ Minimal background noise
-- ✅ AssemblyAI API key configured (optional backend feature)
+- ✅ Backend service running for transcription
 
 ### Use Cases
 
