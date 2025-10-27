@@ -8,7 +8,7 @@ export const siteDetails = {
     language: 'en-us',
     locale: 'en-US',
     siteLogo: '/syllabi_logo.png',
-    googleAnalyticsId: '', // Add your GA4 ID here (e.g. G-XXXXXXXXXX)
+    googleAnalyticsId: 'G-RWTBB09RNL',
     author: 'Achu Shankar',
     keywords: [
         'AI chatbot',
